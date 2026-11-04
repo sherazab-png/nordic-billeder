@@ -238,7 +238,9 @@ add_action( 'wp_default_scripts', function ( $scripts ) {
 } );
 add_action( 'wp_head', function () {
 	// Link i samtykketeksten understreges som i udkastet (tydeligt link i tekst).
-	echo '<style id="nordic-kvalitet-css">.frm-fluent-form .ff_t_c a,.frm-fluent-form .ff-el-tc a{text-decoration:underline}</style>' . "\n";
+	echo '<style id="nordic-kvalitet-css">.frm-fluent-form .ff_t_c a,.frm-fluent-form .ff-el-tc a{text-decoration:underline}'
+		// Meget smalle skærme (under 380 px) som udkastets header: mindre logo, ingen prikker i klinikbjælken
+		. '@media (max-width:379px){.elementor-element-2306273f{gap:8px!important}[data-interaction-id="75138d6e"]{width:32px!important;height:32px!important}[data-interaction-id="7920e6e1"]{font-size:16px!important}.elementor-element-74678d6b a>.e-con:first-child{display:none!important}}</style>' . "\n";
 	$base = home_url( '/nordic-media/fonts/' );
 	foreach ( array( 'manrope-latin-400-normal', 'manrope-latin-700-normal', 'cormorant-garamond-latin-700-normal' ) as $f ) {
 		echo '<link rel="preload" href="' . esc_url( $base . $f . '.woff2' ) . '" as="font" type="font/woff2" crossorigin>' . "\n";
