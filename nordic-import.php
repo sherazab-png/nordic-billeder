@@ -217,6 +217,92 @@ function nordic_imp_walk( &$list, $o, &$hit ) {
 	}
 }
 
+/* ---- Lancering: dev-site -> live-domæne ----
+ * sr       : søg/erstat i databasen (dry=true tæller kun). Serialiserede værdier håndteres korrekt.
+ * golive   : backup af alle tabeller (prefix bk_), søg/erstat, Elementor-CSS ryddes, synlig for søgemaskiner,
+ *            og til sidst byttes mapperne: live public_html -> public_html_gammel_<tid>, dev public_html -> live public_html.
+ * rollback : bytter mapperne tilbage og gendanner tabellerne fra bk_ (køres fra live-domænet efter golive).
+ */
+function nordic_imp_sr_val( $v, $from, $to ) {
+	if ( is_string( $v ) ) {
+		if ( is_serialized( $v ) && false !== ( $u = @unserialize( $v, array( 'allowed_classes' => false ) ) ) ) {
+			return serialize( nordic_imp_sr_val( $u, $from, $to ) );
+		}
+		return str_replace( $from, $to, $v );
+	}
+	if ( is_array( $v ) ) { foreach ( $v as $k => $x ) { $v[ $k ] = nordic_imp_sr_val( $x, $from, $to ); } return $v; }
+	return $v;
+}
+function nordic_imp_sr( $from, $to, $dry ) {
+	global $wpdb;
+	$n = array();
+	$tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix ) . '%' ) );
+	foreach ( $tables as $t ) {
+		$cols = $wpdb->get_results( "SHOW COLUMNS FROM `$t`", ARRAY_A );
+		$pk = null; $txt = array();
+		foreach ( $cols as $c ) {
+			if ( 'PRI' === $c['Key'] && ! $pk ) { $pk = $c['Field']; }
+			if ( preg_match( '/char|text|blob/i', $c['Type'] ) ) { $txt[] = $c['Field']; }
+		}
+		if ( ! $pk || ! $txt ) { continue; }
+		foreach ( $txt as $col ) {
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT `$pk` AS k, `$col` AS v FROM `$t` WHERE `$col` LIKE %s", '%' . $wpdb->esc_like( $from ) . '%' ), ARRAY_A );
+			if ( ! $rows ) { continue; }
+			$n[ "$t.$col" ] = count( $rows );
+			if ( $dry ) { continue; }
+			foreach ( $rows as $r ) {
+				$nv = nordic_imp_sr_val( $r['v'], $from, $to );
+				if ( $nv !== $r['v'] ) { $wpdb->update( $t, array( $col => $nv ), array( $pk => $r['k'] ) ); }
+			}
+		}
+	}
+	return $n;
+}
+function nordic_imp_golive( $fn, $op ) {
+	global $wpdb;
+	@set_time_limit( 300 );
+	$from = $op['from']; $to = $op['to'];
+	if ( 'sr' === $fn ) { return array( 'summary' => nordic_imp_sr( $from, $to, ! empty( $op['dry'] ) ) ); }
+	$base = '/home/' . $op['user'] . '/domains/';
+	$src = $base . $op['src_domain'] . '/public_html';
+	$dst = $base . $op['dst_domain'] . '/public_html';
+	$tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix ) . '%' ) );
+	if ( 'rollback' === $fn ) {
+		$old = $op['old_dir'];
+		if ( ! is_dir( $old ) ) { return array( 'error' => 'gammel mappe findes ikke: ' . $old ); }
+		foreach ( $tables as $t ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', 'bk_' . $t ) ) ) {
+				$wpdb->query( "DELETE FROM `$t`" ); $wpdb->query( "INSERT INTO `$t` SELECT * FROM `bk_$t`" );
+			}
+		}
+		if ( ! rename( $dst, $src ) ) { return array( 'error' => 'kunne ikke flytte live tilbage til dev' ); }
+		if ( ! rename( $old, $dst ) ) { return array( 'error' => 'kunne ikke gendanne gammel live-mappe' ); }
+		return array( 'summary' => 'rullet tilbage' );
+	}
+	// golive
+	if ( ! is_dir( $src ) || ! is_dir( $dst ) ) { return array( 'error' => 'mapper mangler' ); }
+	if ( realpath( ABSPATH ) !== realpath( $src ) ) { return array( 'error' => 'skal køres fra dev-sitet' ); }
+	foreach ( $tables as $t ) {
+		$wpdb->query( "DROP TABLE IF EXISTS `bk_$t`" );
+		$wpdb->query( "CREATE TABLE `bk_$t` LIKE `$t`" );
+		$wpdb->query( "INSERT INTO `bk_$t` SELECT * FROM `$t`" );
+	}
+	$n = nordic_imp_sr( $from, $to, false );
+	update_option( 'blog_public', '1' );
+	if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+	foreach ( array( 'wp-config.php', '.htaccess' ) as $f ) {
+		$p = $src . '/' . $f;
+		if ( is_writable( $p ) ) { $c = file_get_contents( $p ); if ( false !== strpos( $c, $from ) ) { file_put_contents( $p, str_replace( $from, $to, $c ) ); } }
+	}
+	wp_cache_flush();
+	$old = $dst . '_gammel_' . gmdate( 'Ymd_His' );
+	if ( ! rename( $dst, $old ) ) { return array( 'error' => 'kunne ikke flytte gammel live-mappe' ); }
+	if ( ! rename( $src, $dst ) ) { rename( $old, $dst ); return array( 'error' => 'kunne ikke flytte dev til live (gammel live gendannet)' ); }
+	@mkdir( $src );
+	@file_put_contents( $src . '/index.php', '<?php header("Location: https://' . $to . '/", true, 301); exit;' );
+	return array( 'summary' => array( 'replaced' => $n, 'old_dir' => $old, 'tables' => count( $tables ) ) );
+}
+
 function nordic_imp_run( $op, &$st ) {
 	$fn = $op['fn'] ?? 'ability';
 	if ( 'ability' === $fn ) {
@@ -440,6 +526,23 @@ function nordic_imp_run( $op, &$st ) {
 		$st['vars']['ff'] = $id;
 		return array( 'summary' => $id );
 	}
+	if ( 'fscheck' === $fn ) {
+		$base = '/home/' . $op['user'] . '/domains/';
+		$o = array( 'abspath' => ABSPATH );
+		foreach ( array( $op['src_domain'], $op['dst_domain'] ) as $d ) {
+			$dir = $base . $d;
+			$t1 = $dir . '/nordic_rename_test_a'; $t2 = $dir . '/nordic_rename_test_b';
+			$ok = @mkdir( $t1 ) && @rename( $t1, $t2 ) && @rmdir( $t2 );
+			$o[ $d ] = array( 'dir_writable' => is_writable( $dir ), 'rename_ok' => $ok, 'public_html' => is_dir( $dir . '/public_html' ),
+				'entries' => array_slice( (array) @scandir( $dir . '/public_html' ), 0, 40 ), 'wpconfig_has_dev' => false !== strpos( (string) @file_get_contents( $dir . '/public_html/wp-config.php' ), 'dev.' ) );
+		}
+		global $wpdb;
+		$o['db_mb'] = $wpdb->get_var( $wpdb->prepare( 'SELECT ROUND(SUM(data_length+index_length)/1048576,1) FROM information_schema.tables WHERE table_schema=%s', DB_NAME ) );
+		return array( 'summary' => $o );
+	}
+	if ( 'sr' === $fn || 'golive' === $fn || 'rollback' === $fn ) {
+		return nordic_imp_golive( $fn, $op );
+	}
 	if ( 'maildiag' === $fn ) {
 		// Fejlsøgning af formular-mail: seneste indsendelser, Fluent Forms-log og én testmail med fuld fejltekst.
 		global $wpdb;
@@ -459,9 +562,9 @@ function nordic_imp_run( $op, &$st ) {
 	if ( 'ff_mail' === $fn ) {
 		// Afsender på formularens mail: fast adresse (SPF-godkendt) + svar-til patientens e-mail, hvis udfyldt.
 		global $wpdb;
-		$id = (int) nordic_imp_subst( $op['form'] ?? '{{ff}}', $st['vars'] );
+		$id = ( 'all' === ( $op['form'] ?? '' ) ) ? 0 : (int) nordic_imp_subst( $op['form'] ?? '{{ff}}', $st['vars'] );
 		$t = $wpdb->prefix . 'fluentform_form_meta';
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, value FROM $t WHERE form_id = %d AND meta_key = 'notifications'", $id ) );
+		$rows = ( 'all' === ( $op['form'] ?? '' ) ) ? $wpdb->get_results( "SELECT id, value FROM $t WHERE meta_key = 'notifications'" ) : $wpdb->get_results( $wpdb->prepare( "SELECT id, value FROM $t WHERE form_id = %d AND meta_key = 'notifications'", $id ) );
 		if ( ! $rows ) { return array( 'error' => 'ingen notifikation for formular ' . $id ); }
 		foreach ( $rows as $r ) {
 			$v = json_decode( $r->value, true );
