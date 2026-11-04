@@ -1,0 +1,200 @@
+<?php
+/**
+ * Plugin Name: Nordic kvalitet
+ * Description: SEO- og kvalitetstillæg for Nordic-sites: strukturerede data (klinik, brødkrumme, FAQ), Open Graph, billedattributter, brødkrumme-navigation, sikkerhedsheaders, sitemap og oprydning i WordPress-standarder. Ændrer ingen synlig tekst.
+ * Version: 1.0
+ */
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/* Klinikdata pr. domæne (fra udkastene). */
+function nordic_k_site() {
+	$h = strtolower( (string) ( $_SERVER['HTTP_HOST'] ?? '' ) );
+	$base = array(
+		'telephone' => '+4577340036', 'email' => 'info@nordicspecialhospital.dk',
+		'address' => array( '@type' => 'PostalAddress', 'streetAddress' => 'Laurits Olsens Vej 1, 1. sal', 'postalCode' => '2650', 'addressLocality' => 'Hvidovre', 'addressCountry' => 'DK' ),
+		'hours' => array( array( array( 'Monday', 'Tuesday', 'Wednesday', 'Thursday' ), '08:00', '17:00' ), array( array( 'Friday' ), '08:00', '15:30' ) ),
+	);
+	if ( false !== strpos( $h, 'nordicreumatologi' ) ) { return $base + array( 'name' => 'Nordic Reumatologi', 'og' => 'og-reumatologi.png', 'specialty' => 'Rheumatologic' ); }
+	if ( false !== strpos( $h, 'nordicosteoporose' ) ) { return $base + array( 'name' => 'Nordic Osteoporose', 'og' => 'og-osteoporose.png', 'specialty' => '' ); }
+	return $base + array( 'name' => 'Nordic Specialklinik', 'og' => 'og-specialklinik.png', 'specialty' => '' );
+}
+
+/* Sidens metabeskrivelse (fra "Nordic site"-plugin'et eller Specialklinikkens snippet). */
+function nordic_k_desc() {
+	if ( function_exists( 'nordic_seo_current' ) ) { $s = nordic_seo_current(); if ( $s ) { return $s[1]; } }
+	if ( is_singular() ) { $s = get_post_meta( get_queried_object_id(), '_nordic_seo', true ); if ( ! empty( $s['meta'] ) ) { return $s['meta']; } }
+	return '';
+}
+
+function nordic_k_url() {
+	if ( is_front_page() ) { return home_url( '/' ); }
+	if ( is_singular() ) { return get_permalink( get_queried_object_id() ); }
+	return home_url( add_query_arg( array() ) );
+}
+
+/* Open Graph, Twitter og klinikkens strukturerede data */
+add_action( 'wp_head', function () {
+	if ( is_admin() || ! ( is_singular() || is_front_page() ) ) { return; }
+	$s = nordic_k_site();
+	$title = wp_get_document_title();
+	$desc = nordic_k_desc();
+	$url = nordic_k_url();
+	$img = home_url( '/nordic-media/og/' . $s['og'] );
+	$m = array(
+		'og:type' => 'website', 'og:site_name' => $s['name'], 'og:locale' => 'da_DK', 'og:title' => $title, 'og:url' => $url,
+		'og:image' => $img, 'og:image:width' => '1200', 'og:image:height' => '630', 'og:image:alt' => $s['name'],
+	);
+	if ( $desc ) { $m['og:description'] = $desc; }
+	foreach ( $m as $k => $v ) { echo '<meta property="' . esc_attr( $k ) . '" content="' . esc_attr( $v ) . '">' . "\n"; }
+	echo '<meta name="twitter:card" content="summary_large_image">' . "\n";
+	$hours = array();
+	foreach ( $s['hours'] as $x ) { $hours[] = array( '@type' => 'OpeningHoursSpecification', 'dayOfWeek' => $x[0], 'opens' => $x[1], 'closes' => $x[2] ); }
+	$clinic = array(
+		'@type' => 'MedicalClinic', '@id' => home_url( '/#klinik' ), 'name' => $s['name'], 'url' => home_url( '/' ),
+		'image' => $img, 'logo' => home_url( '/nordic-media/billeder/logo-mark-navy.png' ),
+		'telephone' => $s['telephone'], 'email' => $s['email'], 'address' => $s['address'],
+		'openingHoursSpecification' => $hours, 'areaServed' => 'DK', 'availableLanguage' => 'da',
+		'parentOrganization' => array( '@type' => 'MedicalOrganization', 'name' => 'Nordic Specialhospital', 'url' => 'https://nordicspecialhospital.dk/' ),
+	);
+	if ( $s['specialty'] ) { $clinic['medicalSpecialty'] = $s['specialty']; }
+	if ( is_front_page() && $desc ) { $clinic['description'] = $desc; }
+	$graph = array( $clinic, array( '@type' => 'WebSite', '@id' => home_url( '/#websted' ), 'url' => home_url( '/' ), 'name' => $s['name'], 'inLanguage' => 'da-DK', 'publisher' => array( '@id' => home_url( '/#klinik' ) ) ) );
+	echo '<script type="application/ld+json">' . wp_json_encode( array( '@context' => 'https://schema.org', '@graph' => $graph ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "</script>\n";
+}, 5 );
+
+/* Efterbehandling af den færdige side: billedattributter, brødkrumme, FAQ- og brødkrumme-data, sikre links. */
+function nordic_k_sizes() { return array('dexa-scanner-med-leje-i-et-lyst-undersoegelsesrum.webp'=>array(600,900), 'google-ikon.png'=>array(94,96), 'ikon-0fc7e1f50c.svg'=>array(17,17), 'ikon-1e6dfd3500.svg'=>array(22,22), 'ikon-208e749951.svg'=>array(20,20), 'ikon-26f9ac88ca.svg'=>array(24,24), 'ikon-27c494020c.svg'=>array(24,24), 'ikon-2cea039906.svg'=>array(22,22), 'ikon-335df1ba49.svg'=>array(16,16), 'ikon-43ba532814.svg'=>array(22,22), 'ikon-4d7899ddcb.svg'=>array(16,16), 'ikon-508761df0c.svg'=>array(22,22), 'ikon-54fb8344f2.svg'=>array(24,24), 'ikon-54fdae5c8c.svg'=>array(15,15), 'ikon-5f9c06fb54.svg'=>array(22,22), 'ikon-6c3c706d1a.svg'=>array(24,24), 'ikon-786e8d3acd.svg'=>array(22,22), 'ikon-8e6eb26c56.svg'=>array(24,24), 'ikon-930f295ee5.svg'=>array(14,14), 'ikon-c9ff983112.svg'=>array(16,16), 'ikon-df6f7a4d4c.svg'=>array(18,18), 'ikon-e9828ae22b.svg'=>array(18,18), 'ikon-f10e5612ce.svg'=>array(22,22), 'ikon-telefon-guld.svg'=>array(24,24), 'ikon-telefon-navy.svg'=>array(24,24), 'illustration-af-blodtryksmaaling-ved-laegeundersoegelse.webp'=>array(1440,990), 'illustration-af-dexa-scanning.webp'=>array(1440,990), 'illustration-af-et-lyst-venteomraade-i-nordisk-stil.webp'=>array(1440,1080), 'illustration-af-laegefaglig-raadgivning-til-medarbejdere.webp'=>array(1440,990), 'illustration-af-moderne-klinikindretning.webp'=>array(1440,1080), 'illustration-af-samtale-om-medicinsk-vaegtbehandling.webp'=>array(1440,990), 'kvinde-gaar-en-tur-paa-en-kyststi.webp'=>array(600,900), 'kvinde-ved-skrivebord-der-tager-noter.webp'=>array(1400,788), 'laege-gennemgaar-resultater-paa-en-tablet-sammen-med-en-aeld.webp'=>array(1536,1152), 'laege-og-patient-ser-paa-et-roentgenbillede-af-en-haand.webp'=>array(1000,667), 'laege-undersoeger-leddene-i-en-patients-haand.webp'=>array(600,900), 'laege-viser-resultater-paa-tablet.webp'=>array(750,1000), 'logo-mark-hvid.png'=>array(160,160), 'logo-mark-navy.png'=>array(160,160), 'mand-bruger-sin-telefon.webp'=>array(1440,1080), 'mand-loeber-en-tur-paa-en-kyststi.webp'=>array(1400,788), 'og-osteoporose.png'=>array(1200,630), 'og-reumatologi.png'=>array(1200,630), 'og-specialklinik.png'=>array(1200,630), 'par-paa-gaatur-i-skoven.webp'=>array(1400,788)); }
+
+function nordic_k_fix( $html ) {
+	if ( false === stripos( $html, '<html' ) ) { return $html; }
+	$sizes = nordic_k_sizes();
+	$first = true;
+	$main = stripos( $html, 'id="hovedindhold"' );
+	$html = preg_replace_callback( '/<img\b[^>]*>/i', function ( $m ) use ( $sizes, &$first, $main, &$html ) {
+		$t = $m[0];
+		$t = preg_replace( '/\sid="\d+"/', '', $t ); // Elementor giver billeder vedhæftnings-id som HTML-id (dubletter)
+		if ( ! preg_match( '/\swidth=/i', $t ) && preg_match( '/\ssrc="([^"]+)"/i', $t, $s ) ) {
+			$f = basename( strtok( $s[1], '?' ) );
+			$wh = isset( $sizes[ $f ] ) ? $sizes[ $f ] : null;
+			if ( ! $wh && false !== strpos( $s[1], '/wp-content/uploads/' ) ) {
+				$id = attachment_url_to_postid( $s[1] );
+				if ( $id ) { $src = wp_get_attachment_image_src( $id, 'full' ); if ( $src ) { $wh = array( $src[1], $src[2] ); } }
+			}
+			if ( $wh ) { $t = preg_replace( '/^<img\b/i', '<img width="' . (int) $wh[0] . '" height="' . (int) $wh[1] . '"', $t ); }
+		}
+		if ( ! preg_match( '/\sdecoding=/i', $t ) ) { $t = preg_replace( '/^<img\b/i', '<img decoding="async"', $t ); }
+		return $t;
+	}, $html );
+	// Første indholdsbillede indlæses straks (LCP), resten dovent.
+	if ( false !== $main ) {
+		$pos = $main;
+		if ( preg_match( '/<img\b[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE, $pos ) ) {
+			$t = $m[0][0];
+			$n = preg_replace( '/\sloading="lazy"/i', '', $t );
+			$n = preg_replace( '/^<img\b/i', '<img fetchpriority="high"', $n );
+			$html = substr_replace( $html, $n, $m[0][1], strlen( $t ) );
+			$after = $m[0][1] + strlen( $n );
+			$html = substr( $html, 0, $after ) . preg_replace_callback( '/<img\b[^>]*>/i', function ( $x ) {
+				return preg_match( '/\sloading=/i', $x[0] ) ? $x[0] : preg_replace( '/^<img\b/i', '<img loading="lazy"', $x[0] );
+			}, substr( $html, $after ) );
+		}
+	}
+	// Eksterne links i nyt vindue: rel="noopener"
+	$html = preg_replace_callback( '/<a\b[^>]*target="_blank"[^>]*>/i', function ( $m ) {
+		return preg_match( '/\srel=/i', $m[0] ) ? $m[0] : preg_replace( '/^<a\b/i', '<a rel="noopener"', $m[0] );
+	}, $html );
+	// Temaets forældede profil-link
+	$html = preg_replace( '/<link rel="profile" href="http:\/\/gmpg\.org\/xfn\/11"\s*\/?>\s*/i', '', $html );
+	// Brødkrumme: navigationsnavn, aktuel side og strukturerede data
+	if ( false !== $main && class_exists( 'DOMDocument' ) ) {
+		$ld = array();
+		$doc = new DOMDocument();
+		libxml_use_internal_errors( true );
+		$doc->loadHTML( '<?xml encoding="utf-8"?>' . $html );
+		libxml_clear_errors();
+		$xp = new DOMXPath( $doc );
+		$mainEl = $xp->query( '//*[@id="hovedindhold"]' )->item( 0 );
+		$mods = array();
+		if ( $mainEl ) {
+			foreach ( $xp->query( './/nav', $mainEl ) as $nav ) {
+				$txt = trim( preg_replace( '/\s+/u', ' ', $nav->textContent ) );
+				if ( 0 !== strpos( $txt, 'Forside /' ) ) { continue; }
+				if ( ! $nav->hasAttribute( 'aria-label' ) && $nav->getAttribute( 'data-id' ) ) { $mods[ $nav->getAttribute( 'data-id' ) ] = ' aria-label="Brødkrumme"'; }
+				$items = array(); $i = 1; $last = null;
+				foreach ( $xp->query( './/a|.//span', $nav ) as $el ) {
+					$t = trim( preg_replace( '/\s+/u', ' ', $el->textContent ) );
+					if ( '' === $t || '/' === $t ) { continue; }
+					if ( 'a' === strtolower( $el->nodeName ) ) {
+						$items[] = array( '@type' => 'ListItem', 'position' => $i++, 'name' => $t, 'item' => esc_url_raw( home_url( wp_make_link_relative( $el->getAttribute( 'href' ) ) ) ) );
+					} else { $last = array( $el, $t ); }
+				}
+				if ( $last ) {
+					$items[] = array( '@type' => 'ListItem', 'position' => $i, 'name' => $last[1], 'item' => nordic_k_url() );
+					if ( ! $last[0]->hasAttribute( 'aria-current' ) && $last[0]->getAttribute( 'data-interaction-id' ) ) { $mods[ $last[0]->getAttribute( 'data-interaction-id' ) ] = ' aria-current="page"'; }
+				}
+				if ( count( $items ) > 1 ) { $ld[] = array( '@type' => 'BreadcrumbList', 'itemListElement' => $items ); }
+				break;
+			}
+			// FAQ: <details> i sektioner med overskriften "Ofte stillede spørgsmål"
+			$qa = array();
+			foreach ( $xp->query( './/section|.//*[contains(concat(" ",@class," ")," e-con ")][h2]', $mainEl ) as $sec ) {
+				$hit = false;
+				foreach ( $xp->query( './/h2', $sec ) as $h2 ) { if ( false !== mb_stripos( $h2->textContent, 'Ofte stillede spørgsmål' ) ) { $hit = true; } }
+				if ( ! $hit ) { continue; }
+				foreach ( $xp->query( './/details', $sec ) as $d ) {
+					$sum = $xp->query( './/summary', $d )->item( 0 );
+					if ( ! $sum ) { continue; }
+					$q = trim( preg_replace( '/\s+/u', ' ', $sum->textContent ) );
+					$a = trim( preg_replace( '/\s+/u', ' ', substr( $d->textContent, strlen( $sum->textContent ) ) ) );
+					if ( $q && $a ) { $qa[ $q ] = array( '@type' => 'Question', 'name' => $q, 'acceptedAnswer' => array( '@type' => 'Answer', 'text' => $a ) ); }
+				}
+			}
+			if ( $qa ) { $ld[] = array( '@type' => 'FAQPage', 'mainEntity' => array_values( $qa ) ); }
+		}
+		// Kun læsning med DOM; ændringer lægges ind i de oprindelige tags (siden genskrives ikke).
+		foreach ( $mods as $id => $attr ) {
+			$html = preg_replace( '/(<(?:nav|span|a)\b[^>]*\bdata-(?:id|interaction-id)="' . preg_quote( $id, '/' ) . '")/', '$1' . $attr, $html, 1 );
+		}
+		if ( $ld ) {
+			$json = '<script type="application/ld+json">' . wp_json_encode( array( '@context' => 'https://schema.org', '@graph' => $ld ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "</script>\n";
+			$html = preg_replace( '/<\/head>/i', $json . '</head>', $html, 1 );
+		}
+	}
+	return $html;
+}
+add_action( 'template_redirect', function () {
+	if ( is_admin() || is_feed() || wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || isset( $_GET['elementor-preview'] ) ) { return; }
+	ob_start( 'nordic_k_fix' );
+}, 0 );
+
+/* Sikkerhedsheaders (sikre standarder; HSTS og CSP tages ved lancering) */
+add_action( 'send_headers', function () {
+	if ( is_admin() ) { return; }
+	header( 'X-Content-Type-Options: nosniff' );
+	header( 'Referrer-Policy: strict-origin-when-cross-origin' );
+	header( 'X-Frame-Options: SAMEORIGIN' );
+	header( 'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()' );
+} );
+
+/* Oprydning: ingen XML-RPC, ingen versionsnummer, ingen emoji-scripts, ingen brugeropremsning */
+add_filter( 'xmlrpc_enabled', '__return_false' );
+add_filter( 'wp_headers', function ( $h ) { unset( $h['X-Pingback'] ); return $h; } );
+remove_action( 'wp_head', 'wp_generator' );
+remove_action( 'wp_head', 'rsd_link' );
+remove_action( 'wp_head', 'wlwmanifest_link' );
+remove_action( 'wp_head', 'wp_shortlink_wp_head' );
+remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
+remove_action( 'wp_print_styles', 'print_emoji_styles' );
+add_filter( 'emoji_svg_url', '__return_false' );
+add_filter( 'rest_endpoints', function ( $e ) {
+	if ( ! is_user_logged_in() ) { unset( $e['/wp/v2/users'], $e['/wp/v2/users/(?P<id>[\d]+)'] ); }
+	return $e;
+} );
+add_action( 'template_redirect', function () {
+	if ( isset( $_GET['author'] ) && ! is_user_logged_in() ) { wp_safe_redirect( home_url( '/' ), 301 ); exit; }
+	if ( is_author() || is_attachment() ) { wp_safe_redirect( home_url( '/' ), 301 ); exit; }
+}, 1 );
+
+/* Sitemap: kun sider */
+add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
+add_filter( 'wp_sitemaps_post_types', function ( $t ) { return array_intersect_key( $t, array( 'page' => 1 ) ); } );
