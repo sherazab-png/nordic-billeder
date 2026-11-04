@@ -355,6 +355,20 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $kid );
 	}
+	if ( 'seo' === $fn ) {
+		// Ret titel/metabeskrivelse på en side: [ ['post' => id|'{{page:X}}', 'meta' => '...', 'title' => '...'], ... ]
+		$n = 0;
+		foreach ( $op['items'] as $it ) {
+			$pid = (int) nordic_imp_subst( $it['post'], $st['vars'] );
+			if ( ! $pid || 'page' !== get_post_type( $pid ) ) { return array( 'error' => 'ukendt side: ' . $it['post'] ); }
+			$s = get_post_meta( $pid, '_nordic_seo', true );
+			if ( ! is_array( $s ) ) { $s = array(); }
+			foreach ( array( 'title', 'meta' ) as $k ) { if ( isset( $it[ $k ] ) ) { $s[ $k ] = $it[ $k ]; } }
+			update_post_meta( $pid, '_nordic_seo', $s );
+			$n++;
+		}
+		return array( 'summary' => $n );
+	}
 	if ( 'options' === $fn ) {
 		foreach ( $op['options'] as $k => $v ) { update_option( $k, nordic_imp_subst( $v, $st['vars'] ) ); }
 		return array( 'summary' => array_keys( $op['options'] ) );
