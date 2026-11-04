@@ -103,6 +103,18 @@ function nordic_k_fix( $html ) {
 	$html = preg_replace_callback( '/<a\b[^>]*target="_blank"[^>]*>/i', function ( $m ) {
 		return preg_match( '/\srel=/i', $m[0] ) ? $m[0] : preg_replace( '/^<a\b/i', '<a rel="noopener"', $m[0] );
 	}, $html );
+	// Temaets <main id="content"> omkring siden giver to main-landmarks: gør det til en div, når siden har sit eget <main>.
+	if ( false !== $main && preg_match( '/<main id="content"([^>]*)>/', $html ) ) {
+		$html = preg_replace( '/<main id="content"([^>]*)>/', '<div id="content"$1>', $html, 1 );
+		$p = strrpos( $html, '</main>' );
+		if ( false !== $p ) { $html = substr_replace( $html, '</div>', $p, 7 ); }
+	}
+	// Navigationsnavne fra udkastet (header og footer)
+	$labels = array( '74678d6b' => 'Klinikker i Nordic Specialhospital', '527d3265' => 'Hovedmenu', '5dada8e0' => 'Specialklinikker', '5dada8e0o' => 'Specialklinikker' );
+	if ( 'Nordic Osteoporose' === nordic_k_site()['name'] ) { $labels['5dada8e0'] = 'Osteoporose'; }
+	foreach ( $labels as $id => $lab ) {
+		$html = preg_replace( '/(<nav\b(?![^>]*aria-label)[^>]*\bdata-id="' . $id . '")/', '$1 aria-label="' . $lab . '"', $html, 1 );
+	}
 	// Pingback-link (XML-RPC er slået fra)
 	$html = preg_replace( '/<link rel="pingback"[^>]*>\s*/i', '', $html );
 	// Temaets forældede profil-link
