@@ -229,9 +229,10 @@ add_filter( 'document_title', function ( $t ) { return str_replace( array( '&#82
 add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
 add_filter( 'wp_sitemaps_post_types', function ( $t ) { return array_intersect_key( $t, array( 'page' => 1 ) ); } );
 
-/* 404-side i klinikkens design: indholdet redigeres i Elementor på siden "Siden findes ikke" (slug side-ikke-fundet). */
+/* 404-side i klinikkens design: indholdet redigeres i Elementor på siden "Siden findes ikke" (slug side-ikke-fundet eller siden-findes-ikke). */
 function nordic_k_404_page() {
 	$p = get_page_by_path( 'side-ikke-fundet' );
+	if ( ! $p ) { $p = get_page_by_path( 'siden-findes-ikke' ); }
 	return ( $p && 'publish' === $p->post_status ) ? $p : null;
 }
 // Ved 404 vises siden som en almindelig Elementor-side (så dens stilark indlæses), men med status 404.
@@ -254,7 +255,7 @@ add_filter( 'pre_get_document_title', function ( $t ) {
 	return empty( $GLOBALS['nordic_k_is404'] ) ? $t : 'Siden findes ikke - ' . nordic_k_site()['name'];
 }, 99 );
 add_filter( 'wp_robots', function ( $r ) {
-	if ( is_page( 'side-ikke-fundet' ) ) { $r['noindex'] = true; }
+	if ( is_page( array( 'side-ikke-fundet', 'siden-findes-ikke' ) ) ) { $r['noindex'] = true; }
 	return $r;
 } );
 add_filter( 'wp_sitemaps_posts_query_args', function ( $args ) {
