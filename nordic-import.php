@@ -344,6 +344,17 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => count( $op['ops'] ) );
 	}
+	if ( 'kit' === $fn ) {
+		// Flet indstillinger ind i Elementors aktive kit (fx brudpunkter som på Specialklinik).
+		$kid = (int) get_option( 'elementor_active_kit' );
+		if ( ! $kid ) { return array( 'error' => 'intet aktivt kit' ); }
+		$ps = get_post_meta( $kid, '_elementor_page_settings', true );
+		if ( ! is_array( $ps ) ) { $ps = array(); }
+		$ps = array_merge( $ps, $op['settings'] );
+		update_post_meta( $kid, '_elementor_page_settings', $ps );
+		if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => $kid );
+	}
 	if ( 'options' === $fn ) {
 		foreach ( $op['options'] as $k => $v ) { update_option( $k, nordic_imp_subst( $v, $st['vars'] ) ); }
 		return array( 'summary' => array_keys( $op['options'] ) );
