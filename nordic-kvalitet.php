@@ -229,6 +229,13 @@ add_filter( 'document_title', function ( $t ) { return str_replace( array( '&#82
 add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
 add_filter( 'wp_sitemaps_post_types', function ( $t ) { return array_intersect_key( $t, array( 'page' => 1 ) ); } );
 
+/* LiteSpeed: kombinér CSS til én fil (testet: identisk layout på 1440 og 390). Sættes én gang; kan slås fra i LiteSpeed > Sideoptimering. */
+add_action( 'init', function () {
+	if ( get_option( 'nordic_k_csscomb' ) ) { return; }
+	update_option( 'litespeed.conf.optm-css_comb', true );
+	update_option( 'nordic_k_csscomb', 1, false );
+} );
+
 /* 404-side i klinikkens design: indholdet redigeres i Elementor på siden "Siden findes ikke" (slug side-ikke-fundet eller siden-findes-ikke). */
 function nordic_k_404_page() {
 	$p = get_page_by_path( 'side-ikke-fundet' );
