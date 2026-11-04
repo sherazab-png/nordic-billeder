@@ -95,7 +95,8 @@ function nordic_k_fix( $html ) {
 	// Første indholdsbillede indlæses straks (LCP), resten dovent.
 	if ( false !== $main ) {
 		$pos = $main;
-		if ( preg_match( '/<img\b[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE, $pos ) ) {
+		// Første rasterbillede (ikke SVG-ikoner) er typisk sidens LCP-billede.
+		if ( preg_match( '/<img\b(?![^>]*\.svg["\s?])[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE, $pos ) ) {
 			$t = $m[0][0];
 			$n = preg_replace( '/\sloading="lazy"/i', '', $t );
 			$n = preg_replace( '/^<img\b/i', '<img fetchpriority="high"', $n );
@@ -229,7 +230,7 @@ add_action( 'send_headers', function () {
 	header( 'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()' );
 	if ( is_ssl() ) { header( 'Strict-Transport-Security: max-age=31536000' ); }
 	if ( ! is_user_logged_in() && ! isset( $_GET['elementor-preview'] ) ) {
-		header( "Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests" );
+		header( "Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'" );
 	}
 } );
 
