@@ -207,8 +207,13 @@ function nordic_imp_walk( &$list, $o, &$hit ) {
 function nordic_imp_run( $op, &$st ) {
 	$fn = $op['fn'] ?? 'ability';
 	if ( 'ability' === $fn ) {
-		$r = nordic_imp_ability( $op['ability'], nordic_imp_subst( $op['input'], $st['vars'] ) );
+		$in = nordic_imp_subst( $op['input'], $st['vars'] );
+		$r = nordic_imp_ability( $op['ability'], $in );
 		if ( is_wp_error( $r ) ) { return array( 'error' => $r->get_error_message() ); }
+		// Ændringer i et udgivet dokument gemmes som autosave; udgiv straks, så næste trin ser dem.
+		if ( ! empty( $in['post_id'] ) && in_array( $op['ability'], array( 'elementor/manage-elements', 'elementor/build-composition' ), true ) && 'publish' === get_post_status( (int) $in['post_id'] ) ) {
+			nordic_imp_ability( 'elementor/publish-document', array( 'post_id' => (int) $in['post_id'] ) );
+		}
 		return array( 'summary' => substr( wp_json_encode( $r ), 0, 300 ) );
 	}
 	if ( 'page' === $fn ) {
