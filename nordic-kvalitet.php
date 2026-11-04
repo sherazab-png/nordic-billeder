@@ -242,6 +242,52 @@ function nordic_k_404_page() {
 	if ( ! $p ) { $p = get_page_by_path( 'siden-findes-ikke' ); }
 	return ( $p && 'publish' === $p->post_status ) ? $p : null;
 }
+/* 301-omdirigeringer fra de gamle sites' adresser (godkendt af Sheraz 2026-11-04). Gælder kun adresser, der ellers ville give 404. */
+function nordic_k_redirects() {
+	$s = 'https://nordicspecialhospital.dk';
+	$maps = array(
+		'nordicspecialhospital.dk' => array(
+			'/fortrolighedspolitik/' => '/privatlivspolitik/',
+			'/information/' => '/patientinformation/', '/offentlig-patient/' => '/patientinformation/',
+			'/forsikringspatient/' => '/patientinformation/', '/privat-patient/' => '/patientinformation/',
+			'/specialer/' => '/#klinikker',
+			'/overvaegt/' => '/medicinsk-vaegtbehandling/', '/overvaegt-og-hormonsygdomme-2/' => '/medicinsk-vaegtbehandling/',
+			'/reumatologi-og-idraetsmedicin/' => 'https://nordicreumatologi.dk/',
+			'/knogleskorhed/' => 'https://nordicosteoporose.dk/',
+			'/dexa/' => 'https://nordicdexascan.dk/',
+			'/flyvemedicin/' => '/laegeattester/', '/flyvemedicin-class-2/' => '/laegeattester/', '/flyvemedicin-cabin-crew/' => '/laegeattester/',
+			'/kardiologi/' => '/helbredsundersogelse/',
+			'/extra-sections/' => '/', '/maintenance-page/' => '/',
+		),
+		'nordicreumatologi.dk' => array(
+			'/about/' => '/om-os/',
+			'/reumatologi-og-idraetsmedicin/' => '/reumatologi/',
+			'/offentlig-patient/' => '/patientinformation/', '/forsikringspatient/' => '/patientinformation/',
+			'/privat-patient/' => '/patientinformation/', '/praktisk/' => '/patientinformation/',
+			'/privatlivspolitik/' => $s . '/privatlivspolitik/',
+			'/helbredsundersogelse/' => $s . '/helbredsundersogelse/',
+			'/overvaegt-og-hormonsygdomme/' => $s . '/medicinsk-vaegtbehandling/',
+			'/dexa-skanning/' => 'https://nordicdexascan.dk/',
+			'/neurologi/' => '/', '/allergi/' => '/',
+			'/elementskit-content/*' => '/', '/elementor-hf/*' => '/',
+		),
+	);
+	$h = preg_replace( '/^(www\.|dev\.)/', '', strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ) );
+	return $maps[ $h ] ?? array();
+}
+add_action( 'template_redirect', function () {
+	if ( ! is_404() ) { return; }
+	$p = (string) wp_parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH ); // phpcs:ignore
+	$p = '/' . trim( strtolower( $p ), '/' ) . '/';
+	foreach ( nordic_k_redirects() as $from => $to ) {
+		$hit = ( '/*' === substr( $from, -2 ) ) ? 0 === strpos( $p, substr( $from, 0, -1 ) ) : $p === $from;
+		if ( $hit ) {
+			wp_redirect( 0 === strpos( $to, 'http' ) ? $to : home_url( $to ), 301, 'Nordic' ); // phpcs:ignore
+			exit;
+		}
+	}
+}, 0 );
+
 // Ved 404 vises siden som en almindelig Elementor-side (så dens stilark indlæses), men med status 404.
 add_action( 'template_redirect', function () {
 	if ( ! is_404() ) { return; }
