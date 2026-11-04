@@ -234,14 +234,23 @@ function nordic_k_404_page() {
 	$p = get_page_by_path( 'side-ikke-fundet' );
 	return ( $p && 'publish' === $p->post_status ) ? $p : null;
 }
-add_filter( 'template_include', function ( $t ) {
-	if ( is_404() && nordic_k_404_page() && class_exists( '\\Elementor\\Plugin' ) ) { return __DIR__ . '/404.php'; }
-	return $t;
+// Ved 404 vises siden som en almindelig Elementor-side (så dens stilark indlæses), men med status 404.
+add_action( 'template_redirect', function () {
+	if ( ! is_404() ) { return; }
+	$p = nordic_k_404_page();
+	if ( ! $p ) { return; }
+	global $wp_query, $wp_the_query, $post;
+	$wp_query = new WP_Query( array( 'page_id' => $p->ID ) ); // phpcs:ignore
+	$wp_the_query = $wp_query; // phpcs:ignore
+	$post = $p; // phpcs:ignore
+	setup_postdata( $post );
+	$GLOBALS['nordic_k_is404'] = true;
+	status_header( 404 );
+	nocache_headers();
+}, 1 );
+add_filter( 'pre_get_document_title', function ( $t ) {
+	return empty( $GLOBALS['nordic_k_is404'] ) ? $t : 'Siden findes ikke - ' . nordic_k_site()['name'];
 }, 99 );
-add_filter( 'document_title_parts', function ( $parts ) {
-	if ( is_404() && nordic_k_404_page() ) { $parts['title'] = 'Siden findes ikke'; }
-	return $parts;
-} );
 add_filter( 'wp_robots', function ( $r ) {
 	if ( is_page( 'side-ikke-fundet' ) ) { $r['noindex'] = true; }
 	return $r;
