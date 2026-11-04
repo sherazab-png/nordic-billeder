@@ -178,6 +178,8 @@ function nordic_k_fix( $html ) {
 			$html = preg_replace( '/<\/head>/i', $json . '</head>', $html, 1 );
 		}
 	}
+	// Tegnsætning lige efter et link i løbende tekst: fjern mellemrummet mellem </a> og punktummet/kommaet (som i udkastet).
+	$html = preg_replace( '/<\/a>\s+(<span\b[^>]*\bclass="[^"]*e-paragraph-base[^"]*"[^>]*>[.,;:!?]{1,3}<\/span>)/', '</a>$1', $html );
 	return $html;
 }
 add_action( 'template_redirect', function () {
