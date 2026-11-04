@@ -189,6 +189,8 @@ function nordic_k_fix( $html ) {
 					$page['lastReviewed'] = $mm[2] . '-' . $months[ mb_strtolower( $mm[1] ) ];
 				}
 				$path = (string) wp_parse_url( nordic_k_url(), PHP_URL_PATH );
+				if ( in_array( $path, array( '/cookies/', '/privatlivspolitik/', '/anmod-om-tid/' ), true ) ) { $page['@type'] = 'WebPage'; unset( $page['audience'], $page['specialty'] ); }
+				if ( '/kontakt/' === $path ) { $page['@type'] = 'ContactPage'; unset( $page['audience'], $page['specialty'] ); }
 				if ( preg_match( '#^/(sygdomme|idraetsmedicin)/[^/]+/$#', $path ) || in_array( $path, array( '/osteoporose/', '/osteopeni/', '/osteoporose-hos-maend/' ), true ) ) {
 					$page['about'] = array( '@type' => 'MedicalCondition', 'name' => $name );
 				}
