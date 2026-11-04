@@ -71,6 +71,13 @@ add_action( 'init', function () {
 	$plan = json_decode( (string) $plain, true );
 	if ( ! is_array( $plan ) ) { echo '{"error":"plan kan ikke laeses"}'; exit; }
 	if ( 'reset' === $_GET['nordic_import'] ) { delete_option( 'nordic_import_state' ); echo '{"reset":true}'; exit; }
+	if ( 'dump' === $_GET['nordic_import'] ) {
+		// Viser header/footer-data, så rettelser kan beregnes præcist.
+		$st0 = get_option( 'nordic_import_state', array() );
+		$o = array();
+		foreach ( (array) ( $st0['vars'] ?? array() ) as $k => $v ) { if ( 0 === strpos( $k, 'hf:' ) ) { $o[ $k ] = get_post_meta( (int) $v, '_elementor_data', true ); } }
+		echo wp_json_encode( $o ); exit;
+	}
 
 	$admins = get_users( array( 'role' => 'administrator', 'number' => 1, 'orderby' => 'ID' ) );
 	if ( ! $admins ) { echo '{"error":"ingen administrator"}'; exit; }
@@ -220,6 +227,23 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $made );
+	}
+	if ( 'hf_patch' === $fn ) {
+		// Præcise tekst-/linkrettelser i header/footer. Fejler, hvis en tekst ikke findes.
+		$pid = (int) nordic_imp_subst( $op['post'], $st['vars'] );
+		$data = (string) get_post_meta( $pid, '_elementor_data', true );
+		foreach ( $op['pairs'] as $pr ) {
+			$n = substr_count( $data, $pr[0] );
+			if ( ! $n ) { return array( 'error' => 'findes ikke: ' . substr( $pr[0], 0, 80 ) ); }
+			$data = str_replace( $pr[0], $pr[1], $data );
+		}
+		json_decode( $data );
+		if ( json_last_error() ) { return array( 'error' => 'ugyldig json efter rettelse' ); }
+		update_post_meta( $pid, '_elementor_data', wp_slash( $data ) );
+		delete_post_meta( $pid, '_elementor_css' );
+		delete_post_meta( $pid, '_elementor_element_cache' );
+		if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => count( $op['pairs'] ) );
 	}
 	if ( 'options' === $fn ) {
 		foreach ( $op['options'] as $k => $v ) { update_option( $k, nordic_imp_subst( $v, $st['vars'] ) ); }
