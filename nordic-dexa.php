@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.0
+ * Version: 1.1
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -10,6 +10,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 add_action( 'wp_head', function () {
 	if ( is_front_page() ) {
 		echo '<link rel="preload" as="image" href="' . esc_url( content_url( '/uploads/2026/10/hero_q90.webp' ) ) . '" fetchpriority="high">' . "\n";
+	}
+	// Skrifttyperne (latin, variable) hentes straks, så overskrifter ikke ombrydes om, når skriften skifter (layoutskift).
+	foreach ( array( 'manrope-58ee1998', 'cormorantgaramond-abcaa8b4' ) as $f ) {
+		if ( file_exists( WP_CONTENT_DIR . '/uploads/elementor/google-fonts/fonts/' . $f . '.woff2' ) ) {
+			echo '<link rel="preload" as="font" type="font/woff2" href="' . esc_url( content_url( '/uploads/elementor/google-fonts/fonts/' . $f . '.woff2' ) ) . '" crossorigin>' . "\n";
+		}
 	}
 }, 1 );
 
