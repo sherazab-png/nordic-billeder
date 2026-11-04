@@ -103,6 +103,8 @@ function nordic_k_fix( $html ) {
 	$html = preg_replace_callback( '/<a\b[^>]*target="_blank"[^>]*>/i', function ( $m ) {
 		return preg_match( '/\srel=/i', $m[0] ) ? $m[0] : preg_replace( '/^<a\b/i', '<a rel="noopener"', $m[0] );
 	}, $html );
+	// Pingback-link (XML-RPC er slået fra)
+	$html = preg_replace( '/<link rel="pingback"[^>]*>\s*/i', '', $html );
 	// Temaets forældede profil-link
 	$html = preg_replace( '/<link rel="profile" href="http:\/\/gmpg\.org\/xfn\/11"\s*\/?>\s*/i', '', $html );
 	// Brødkrumme: navigationsnavn, aktuel side og strukturerede data
@@ -194,6 +196,9 @@ add_action( 'template_redirect', function () {
 	if ( isset( $_GET['author'] ) && ! is_user_logged_in() ) { wp_safe_redirect( home_url( '/' ), 301 ); exit; }
 	if ( is_author() || is_attachment() ) { wp_safe_redirect( home_url( '/' ), 301 ); exit; }
 }, 1 );
+
+/* Almindelig bindestreg i sidetitler (fx 404-siden) i stedet for lang tankestreg */
+add_filter( 'document_title_separator', function () { return '-'; } );
 
 /* Sitemap: kun sider */
 add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
