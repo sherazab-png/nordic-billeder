@@ -257,3 +257,11 @@ add_action( 'wp_head', function () {
 	}
 	echo '<style id="nordic-skrift">' . $css . "</style>\n";
 }, 2 );
+
+/* Menuer i headeren (dropdown, stor menu, mobilmenu): Esc og klik udenfor lukker, og kun én er åben ad gangen. */
+add_action( 'wp_footer', function () {
+	echo "<script>(function(){var h=document.querySelector('[data-elementor-type=\"header\"],header');if(!h)return;var D=function(){return h.querySelectorAll('details[open]')};"
+		. "h.addEventListener('toggle',function(e){var t=e.target;if(t.tagName==='DETAILS'&&t.open){D().forEach(function(x){if(x!==t&&!x.contains(t)&&!t.contains(x))x.open=false})}},true);"
+		. "document.addEventListener('keydown',function(e){if(e.key==='Escape'){D().forEach(function(x){x.open=false;var s=x.querySelector('summary');if(s&&x.contains(document.activeElement))s.focus()})}});"
+		. "document.addEventListener('click',function(e){if(!h.contains(e.target))D().forEach(function(x){x.open=false})});})();</script>\n";
+}, 99 );
