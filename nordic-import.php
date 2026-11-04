@@ -570,6 +570,11 @@ function nordic_imp_run( $op, &$st ) {
 			foreach ( (array) glob( $d . '/*.{css,php}', GLOB_BRACE ) as $f ) { if ( false !== strpos( (string) file_get_contents( $f ), $op['q'] ) ) { $files[] = $f; } }
 		}
 		$o['files'] = array_values( array_unique( $files ) );
+		if ( ! empty( $op['ctx_post'] ) ) {
+			$v = (string) get_post_meta( (int) $op['ctx_post'], '_elementor_data', true );
+			$o['ctx'] = array();
+			for ( $i = strpos( $v, $op['q'] ); false !== $i && count( $o['ctx'] ) < 5; $i = strpos( $v, $op['q'], $i + 1 ) ) { $o['ctx'][] = substr( $v, max( 0, $i - 300 ), 600 ); }
+		}
 		return array( 'summary' => $o );
 	}
 	if ( 'opts' === $fn ) {
