@@ -109,6 +109,10 @@ function nordic_k_fix( $html ) {
 		$p = strrpos( $html, '</main>' );
 		if ( false !== $p ) { $html = substr_replace( $html, '</div>', $p, 7 ); }
 	}
+	// Sider uden <main>: sidens indhold (#hovedindhold) får main-rollen
+	if ( ! preg_match( '/<main\b/i', $html ) ) {
+		$html = preg_replace( '/(<div\b(?![^>]*\brole=)[^>]*\bid="hovedindhold")/', '$1 role="main"', $html, 1 );
+	}
 	// Navigationsnavne fra udkastet (header og footer)
 	$labels = array( '74678d6b' => 'Klinikker i Nordic Specialhospital', '527d3265' => 'Hovedmenu', '5dada8e0' => 'Specialklinikker', '5dada8e0o' => 'Specialklinikker' );
 	if ( 'Nordic Osteoporose' === nordic_k_site()['name'] ) { $labels['5dada8e0'] = 'Osteoporose'; }
