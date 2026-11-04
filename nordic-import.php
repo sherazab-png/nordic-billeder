@@ -586,6 +586,53 @@ function nordic_imp_run( $op, &$st ) {
 		if ( empty( $op['dry'] ) && class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $log );
 	}
+	if ( 'htag' === $fn ) {
+		// Skift HTML-tag (header_size) på overskrift-widgets efter element-id. Synlig tekst og stil røres ikke. Backup i _nordic_bk_<op-id>.
+		global $wpdb;
+		$map = (array) $op['map'];
+		$ids = $wpdb->get_col( "SELECT p.ID FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish'" );
+		$log = array();
+		foreach ( $ids as $pid ) {
+			$raw = (string) get_post_meta( (int) $pid, '_elementor_data', true );
+			$tree = json_decode( $raw, true );
+			if ( ! is_array( $tree ) ) { continue; }
+			$n = 0;
+			$walk = function ( &$els ) use ( &$walk, &$n, $map ) {
+				foreach ( $els as &$e ) {
+					if ( 'heading' === ( $e['widgetType'] ?? '' ) && isset( $map[ $e['id'] ] ) ) {
+						$old = $e['settings']['header_size'] ?? 'h2';
+						if ( $old !== $map[ $e['id'] ] ) { $e['settings']['header_size'] = $map[ $e['id'] ]; $n++; }
+					}
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
+				}
+			};
+			$walk( $tree );
+			if ( $n && empty( $op['dry'] ) ) {
+				if ( ! metadata_exists( 'post', (int) $pid, '_nordic_bk_' . $op['id'] ) ) { add_post_meta( (int) $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) ); }
+				update_post_meta( (int) $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
+				delete_post_meta( (int) $pid, '_elementor_css' );
+				delete_post_meta( (int) $pid, '_elementor_element_cache' );
+			}
+			if ( $n ) { $log[ $pid ] = $n; }
+		}
+		if ( empty( $op['dry'] ) && class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => $log );
+	}
+	if ( 'restore_bk' === $fn ) {
+		// Gendan _elementor_data fra backup-nøgle for de angivne indlæg (eller alle med nøglen).
+		global $wpdb;
+		$key = '_nordic_bk_' . $op['bk'];
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT post_id, meta_value FROM $wpdb->postmeta WHERE meta_key=%s", $key ), ARRAY_A );
+		$log = array();
+		foreach ( $rows as $r ) {
+			if ( ! empty( $op['posts'] ) && ! in_array( (int) $r['post_id'], array_map( 'intval', $op['posts'] ), true ) ) { continue; }
+			update_post_meta( (int) $r['post_id'], '_elementor_data', wp_slash( $r['meta_value'] ) );
+			delete_post_meta( (int) $r['post_id'], '_elementor_css' );
+			$log[] = (int) $r['post_id'];
+		}
+		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => $log );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
