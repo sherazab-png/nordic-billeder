@@ -63,7 +63,7 @@ add_shortcode( 'nordic_risikotest', function () {
 		. 'flere:["En udredning kan give dig et klart svar","Du har flere risikofaktorer. Tilsammen kan de øge risikoen for brud. En DEXA-scanning og en FRAX-beregning viser, hvor du står."],'
 		. 'en:["En DEXA-scanning kan give dig et klart svar","Du har én risikofaktor. Én risikofaktor betyder ikke, at du har osteoporose, men en DEXA-scanning af hofte og ryg er en enkel undersøgelse, der viser, hvordan dine knogler har det."],'
 		. 'ingen:["Du har ingen af de almindelige risikofaktorer","Hold knoglerne stærke med motion, nok kalk og D-vitamin. Er du alligevel bekymret for dine knogler, kan du anmode om en DEXA-scanning. Får du et brud efter et mindre fald, bør du blive undersøgt."]};'
-		. 'var root=document.currentScript.previousElementSibling.previousElementSibling,a={};'
+		. 'var root=(function(e){while(e&&!(e.classList&&e.classList.contains("nrt")))e=e.previousElementSibling;return e})(document.currentScript),a={};if(!root)return;'
 		. 'function $(s){return root.querySelector(s)}'
 		. 'function draw(){var ans=0,yes=[];Q.forEach(function(q){if(a[q.id])ans++;if(a[q.id]==="ja")yes.push(q)});'
 		. 'var st=yes.filter(function(q){return q.strong}).length,ot=yes.length-st,done=ans===Q.length,lv="start";'
@@ -107,7 +107,7 @@ add_shortcode( 'nordic_tscore', function () {
 	$h .= '<p style="margin: 0; font-size: 13.5px; color: #5E6D82">WHO\'s grænser for T-score i hofte eller lænderyg hos kvinder efter overgangsalderen og mænd over 50 år. Et lavenergibrud i ryg eller hofte kan give diagnosen osteoporose uanset T-scoren. Lægen vurderer altid det samlede billede.</p>';
 	$h .= '</div>';
 	$h .= '<style>.nts [hidden]{display:none!important}.ts-in:focus{outline:2px solid #183A70;outline-offset:1px;border-color:#183A70}</style>';
-	$h .= '<script>(function(){var root=document.currentScript.previousElementSibling.previousElementSibling,inp=root.querySelector(".ts-in"),res=root.querySelector(".ts-res"),mk=root.querySelector(".ts-mark"),lab=root.querySelector(".ts-lab");'
+	$h .= '<script>(function(){var root=(function(e){while(e&&!(e.classList&&e.classList.contains("nts")))e=e.previousElementSibling;return e})(document.currentScript);if(!root)return;var inp=root.querySelector(".ts-in"),res=root.querySelector(".ts-res"),mk=root.querySelector(".ts-mark"),lab=root.querySelector(".ts-lab");'
 		. 'inp.addEventListener("input",function(){var raw=(inp.value||"").trim().replace(/−/g,"-").replace(",","."),t="Skriv tallet fra din scanningsrapport, fx -2,1. Står der flere, så brug den laveste.",show=false;'
 		. 'if(raw!==""){var v=Number(raw);if(!isFinite(v)||v<-6||v>4){t="Skriv et tal mellem -6 og +4, fx -2,1."}else{var fmt=Math.abs(v)<0.05?"0,0":(v>0?"+":"")+v.toFixed(1).replace(".",","),cat="normalområdet (-1,0 eller højere)";'
 		. 'if(v<=-2.5)cat="osteoporose-området (-2,5 eller lavere)";else if(v<-1.0)cat="osteopeni-området (mellem -1,0 og -2,5)";'
