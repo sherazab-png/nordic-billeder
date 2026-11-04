@@ -526,6 +526,36 @@ function nordic_imp_run( $op, &$st ) {
 		$st['vars']['ff'] = $id;
 		return array( 'summary' => $id );
 	}
+	if ( 'pageinfo' === $fn ) {
+		// Oversigt over sider, Rank Math-felter og (for udvalgte sider) Elementor-elementer med tekst/overskrifter.
+		$o = array( 'pages' => array() );
+		foreach ( get_pages( array( 'post_status' => 'publish', 'number' => 200 ) ) as $p ) {
+			$o['pages'][] = array( $p->ID, $p->post_name, $p->post_title, get_post_meta( $p->ID, 'rank_math_title', true ), get_post_meta( $p->ID, 'rank_math_description', true ), get_post_meta( $p->ID, 'rank_math_focus_keyword', true ), get_post_meta( $p->ID, '_elementor_edit_mode', true ) );
+		}
+		$o['front'] = (int) get_option( 'page_on_front' );
+		$o['tpl'] = array();
+		foreach ( get_posts( array( 'post_type' => 'elementor_library', 'numberposts' => 50, 'post_status' => 'publish' ) ) as $t ) { $o['tpl'][] = array( $t->ID, $t->post_title, get_post_meta( $t->ID, '_elementor_template_type', true ) ); }
+		$o['el'] = array();
+		foreach ( (array) ( $op['ids'] ?? array() ) as $pid ) {
+			$data = json_decode( (string) get_post_meta( (int) $pid, '_elementor_data', true ), true );
+			$list = array();
+			$walk = function ( $els, $d ) use ( &$walk, &$list ) {
+				foreach ( (array) $els as $e ) {
+					$st = $e['settings'] ?? array();
+					$txt = '';
+					foreach ( array( 'title', 'editor', 'text', 'description_text', 'title_text', 'heading', 'price', 'button_text' ) as $k ) { if ( ! empty( $st[ $k ] ) && is_string( $st[ $k ] ) ) { $txt .= $k . '=' . mb_substr( wp_strip_all_tags( $st[ $k ] ), 0, 90 ) . ' '; } }
+					$w = $e['widgetType'] ?? $e['elType'];
+					if ( $txt || in_array( $w, array( 'image', 'heading' ), true ) ) {
+						$list[] = str_repeat( ' ', $d ) . $e['id'] . ' ' . $w . ( isset( $st['header_size'] ) ? ' [' . $st['header_size'] . ']' : '' ) . ( isset( $st['image']['url'] ) ? ' img=' . basename( $st['image']['url'] ) . ' alt=' . ( $st['image']['alt'] ?? '' ) : '' ) . ' ' . $txt;
+					}
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'], $d + 1 ); }
+				}
+			};
+			$walk( $data, 0 );
+			$o['el'][ $pid ] = $list;
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'opts' === $fn ) {
 		global $wpdb;
 		$o = array();
