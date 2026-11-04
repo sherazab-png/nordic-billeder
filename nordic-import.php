@@ -556,6 +556,22 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'grep' === $fn ) {
+		// Find en tekststreng i indlæg, metadata og options (kun læsning).
+		global $wpdb;
+		$q = '%' . $wpdb->esc_like( $op['q'] ) . '%';
+		$o = array(
+			'posts' => $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_type, post_status, post_title FROM $wpdb->posts WHERE post_content LIKE %s LIMIT 20", $q ), ARRAY_A ),
+			'meta'  => $wpdb->get_results( $wpdb->prepare( "SELECT post_id, meta_key FROM $wpdb->postmeta WHERE meta_value LIKE %s LIMIT 20", $q ), ARRAY_A ),
+			'opts'  => $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM $wpdb->options WHERE option_value LIKE %s LIMIT 20", $q ) ),
+		);
+		$files = array();
+		foreach ( array( get_stylesheet_directory(), get_template_directory() ) as $d ) {
+			foreach ( (array) glob( $d . '/*.{css,php}', GLOB_BRACE ) as $f ) { if ( false !== strpos( (string) file_get_contents( $f ), $op['q'] ) ) { $files[] = $f; } }
+		}
+		$o['files'] = array_values( array_unique( $files ) );
+		return array( 'summary' => $o );
+	}
 	if ( 'opts' === $fn ) {
 		global $wpdb;
 		$o = array();
