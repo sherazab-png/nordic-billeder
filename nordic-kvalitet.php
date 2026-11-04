@@ -58,6 +58,13 @@ add_action( 'wp_head', function () {
 	);
 	if ( $s['specialty'] ) { $clinic['medicalSpecialty'] = $s['specialty']; }
 	if ( is_front_page() && $desc ) { $clinic['description'] = $desc; }
+	// Placering og Google-profil (koordinater og place_id fra Google Maps for Laurits Olsens Vej 1, Hvidovre)
+	$clinic['geo'] = array( '@type' => 'GeoCoordinates', 'latitude' => 55.6634844, 'longitude' => 12.4770292 );
+	$clinic['hasMap'] = 'https://www.google.com/maps/place/?q=place_id:ChIJ9bwYyo9RUkYRD2x-2cOCUH0';
+	$clinic['isAcceptingNewPatients'] = true;
+	$sister = array( 'https://nordicspecialhospital.dk/', 'https://nordicreumatologi.dk/', 'https://nordicosteoporose.dk/', 'https://nordicdexascan.dk/' );
+	$clinic['parentOrganization']['subOrganization'] = array();
+	foreach ( $sister as $u ) { if ( home_url( '/' ) !== $u ) { $clinic['parentOrganization']['subOrganization'][] = array( '@type' => 'MedicalClinic', 'url' => $u ); } }
 	$graph = array( $clinic, array( '@type' => 'WebSite', '@id' => home_url( '/#websted' ), 'url' => home_url( '/' ), 'name' => $s['name'], 'inLanguage' => 'da-DK', 'publisher' => array( '@id' => home_url( '/#klinik' ) ) ) );
 	echo '<script type="application/ld+json">' . wp_json_encode( array( '@context' => 'https://schema.org', '@graph' => $graph ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "</script>\n";
 }, 5 );
@@ -168,6 +175,27 @@ function nordic_k_fix( $html ) {
 				}
 			}
 			if ( $qa ) { $ld[] = array( '@type' => 'FAQPage', 'mainEntity' => array_values( $qa ) ); }
+			// Medicinsk side: overskrift, sprog, målgruppe, klinik som udgiver og "Senest opdateret" fra sidens egen tekst.
+			$h1 = $xp->query( './/h1', $mainEl )->item( 0 );
+			if ( $h1 && ! is_front_page() && empty( $GLOBALS['nordic_k_is404'] ) ) {
+				$name = trim( preg_replace( '/\s+/u', ' ', $h1->textContent ) );
+				$page = array( '@type' => 'MedicalWebPage', '@id' => nordic_k_url() . '#side', 'url' => nordic_k_url(), 'name' => $name,
+					'inLanguage' => 'da-DK', 'isPartOf' => array( '@id' => home_url( '/#websted' ) ), 'publisher' => array( '@id' => home_url( '/#klinik' ) ),
+					'audience' => array( '@type' => 'MedicalAudience', 'audienceType' => 'Patient' ) );
+				$si = nordic_k_site();
+				if ( $si['specialty'] ) { $page['specialty'] = $si['specialty']; }
+				$months = array( 'januar' => '01', 'februar' => '02', 'marts' => '03', 'april' => '04', 'maj' => '05', 'juni' => '06', 'juli' => '07', 'august' => '08', 'september' => '09', 'oktober' => '10', 'november' => '11', 'december' => '12' );
+				if ( preg_match( '/Senest opdateret:?\s*(' . implode( '|', array_keys( $months ) ) . ')\s+(\d{4})/iu', $mainEl->textContent, $mm ) ) {
+					$page['lastReviewed'] = $mm[2] . '-' . $months[ mb_strtolower( $mm[1] ) ];
+				}
+				$path = (string) wp_parse_url( nordic_k_url(), PHP_URL_PATH );
+				if ( preg_match( '#^/(sygdomme|idraetsmedicin)/[^/]+/$#', $path ) || in_array( $path, array( '/osteoporose/', '/osteopeni/', '/osteoporose-hos-maend/' ), true ) ) {
+					$page['about'] = array( '@type' => 'MedicalCondition', 'name' => $name );
+				}
+				$pdesc = nordic_k_desc();
+				if ( $pdesc ) { $page['description'] = $pdesc; }
+				$ld[] = $page;
+			}
 		}
 		// Kun læsning med DOM; ændringer lægges ind i de oprindelige tags (siden genskrives ikke).
 		foreach ( $mods as $id => $attr ) {
@@ -229,6 +257,7 @@ add_filter( 'document_title', function ( $t ) { return str_replace( array( '&#82
 /* Sitemap: kun sider */
 add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
 add_filter( 'wp_sitemaps_post_types', function ( $t ) { return array_intersect_key( $t, array( 'page' => 1 ) ); } );
+add_filter( 'wp_sitemaps_posts_entry', function ( $e, $post ) { $e['lastmod'] = get_post_modified_time( 'c', true, $post ); return $e; }, 10, 2 );
 
 /* LiteSpeed: kombinér CSS til én fil (testet: identisk layout på 1440 og 390). Sættes én gang; kan slås fra i LiteSpeed > Sideoptimering. */
 add_action( 'init', function () {
