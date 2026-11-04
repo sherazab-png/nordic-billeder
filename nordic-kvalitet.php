@@ -34,7 +34,7 @@ function nordic_k_url() {
 
 /* Open Graph, Twitter og klinikkens strukturerede data */
 add_action( 'wp_head', function () {
-	if ( is_admin() || ! ( is_singular() || is_front_page() ) ) { return; }
+	if ( is_admin() || ! ( is_singular() || is_front_page() ) || ! empty( $GLOBALS['nordic_k_is404'] ) ) { return; }
 	$s = nordic_k_site();
 	$title = wp_get_document_title();
 	$desc = nordic_k_desc();
@@ -245,6 +245,8 @@ add_action( 'template_redirect', function () {
 	$post = $p; // phpcs:ignore
 	setup_postdata( $post );
 	$GLOBALS['nordic_k_is404'] = true;
+	remove_action( 'wp_head', 'rel_canonical' );
+	remove_action( 'wp_head', 'wp_shortlink_wp_head' );
 	status_header( 404 );
 	nocache_headers();
 }, 1 );
