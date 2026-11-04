@@ -216,3 +216,36 @@ add_filter( 'document_title', function ( $t ) { return str_replace( array( '&#82
 /* Sitemap: kun sider */
 add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
 add_filter( 'wp_sitemaps_post_types', function ( $t ) { return array_intersect_key( $t, array( 'page' => 1 ) ); } );
+
+/* Hastighed: egne skrifttyper (kun de brugte vægte, font-display: swap) i stedet for Google Fonts med alle vægte,
+   og ingen ikon- og widget-styles, som siderne ikke bruger. */
+function nordic_k_fonts() {
+	return array( array( 'Manrope', 'manrope', array( 400, 500, 600, 700 ) ), array( 'Montserrat', 'montserrat', array( 400, 500, 600 ) ), array( 'Cormorant Garamond', 'cormorant-garamond', array( 500, 600, 700 ) ) );
+}
+add_filter( 'elementor/frontend/print_google_fonts', '__return_false' );
+add_action( 'wp_enqueue_scripts', function () {
+	foreach ( array( 'hfe-elementor-icons', 'hfe-icons-list', 'hfe-social-icons', 'hfe-social-share-icons-brands', 'hfe-social-share-icons-fontawesome', 'hfe-nav-menu-icons', 'elementor-icons', 'fluent-form-styles', 'fluentform-elementor-widget' ) as $h ) { wp_dequeue_style( $h ); }
+	wp_dequeue_script( 'hello-theme-frontend' );
+	wp_dequeue_script( 'fluentform-elementor' );
+}, 999 );
+add_action( 'wp_print_styles', function () {
+	global $wp_styles;
+	if ( empty( $wp_styles->queue ) ) { return; }
+	foreach ( $wp_styles->queue as $h ) { if ( 0 === strpos( $h, 'elementor-gf-' ) ) { wp_dequeue_style( $h ); } }
+}, 1 );
+add_action( 'wp_default_scripts', function ( $scripts ) {
+	if ( ! is_admin() && isset( $scripts->registered['jquery'] ) ) { $scripts->registered['jquery']->deps = array_diff( $scripts->registered['jquery']->deps, array( 'jquery-migrate' ) ); }
+} );
+add_action( 'wp_head', function () {
+	$base = home_url( '/nordic-media/fonts/' );
+	foreach ( array( 'manrope-latin-400-normal', 'manrope-latin-700-normal', 'cormorant-garamond-latin-700-normal' ) as $f ) {
+		echo '<link rel="preload" href="' . esc_url( $base . $f . '.woff2' ) . '" as="font" type="font/woff2" crossorigin>' . "\n";
+	}
+	$css = '';
+	foreach ( nordic_k_fonts() as $f ) {
+		foreach ( $f[2] as $w ) {
+			$css .= '@font-face{font-family:"' . $f[0] . '";font-style:normal;font-weight:' . $w . ';font-display:swap;src:url(' . $base . $f[1] . '-latin-' . $w . '-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}';
+		}
+	}
+	echo '<style id="nordic-skrift">' . $css . "</style>\n";
+}, 2 );
