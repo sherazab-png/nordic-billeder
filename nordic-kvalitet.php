@@ -77,6 +77,7 @@ function nordic_k_fix( $html ) {
 	$sizes = nordic_k_sizes();
 	$first = true;
 	$main = stripos( $html, 'id="hovedindhold"' );
+	if ( false === $main ) { $main = stripos( $html, 'id="content"' ); } // fx Specialklinikkens forside
 	$html = preg_replace_callback( '/<img\b[^>]*>/i', function ( $m ) use ( $sizes, &$first, $main, &$html ) {
 		$t = $m[0];
 		$t = preg_replace( '/\sid="\d+"/', '', $t ); // Elementor giver billeder vedhæftnings-id som HTML-id (dubletter)
