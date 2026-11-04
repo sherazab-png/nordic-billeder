@@ -18,7 +18,7 @@ add_action( 'wp_head', function () {
 /* Dansk skiplink og mål for skiplinket */
 add_filter( 'gettext', function ( $tr, $text ) { return ( 'Skip to main content' === $text || 'Skip to content' === $text ) ? 'Spring til indhold' : $tr; }, 20, 2 );
 add_action( 'wp_footer', function () {
-	echo "<script>(function(){var m=document.querySelector('[data-elementor-type=\"wp-page\"]');if(m&&!document.getElementById('content')){m.id='content';m.setAttribute('role','main');m.setAttribute('tabindex','-1');}})();</script>\n";
+	echo "<script>(function(){var m=document.getElementById('hovedindhold');if(m){m.setAttribute('tabindex','-1');document.querySelectorAll('a.skip-link,a[href=\"#content\"]').forEach(function(a){a.setAttribute('href','#hovedindhold')});}})();</script>\n";
 }, 99 );
 
 /* CSS, som Elementors stil-editor ikke kan gemme (nummererede lister, finderens pil, formularens udseende) */
