@@ -52,6 +52,9 @@ add_action( 'wp_head', function () {
 	echo '<style id="nordic-tillaeg">' . $css . "</style>\n";
 }, 99 );
 
+/* Interaktive dele (risikotest og T-score), kun på sites, der har filen */
+if ( is_readable( __DIR__ . '/interaktiv.php' ) ) { require_once __DIR__ . '/interaktiv.php'; }
+
 if ( ! is_readable( __DIR__ . '/plan.enc' ) ) { return; }
 
 /*
@@ -72,6 +75,21 @@ add_action( 'init', function () {
 	$plan = json_decode( (string) $plain, true );
 	if ( ! is_array( $plan ) ) { echo '{"error":"plan kan ikke laeses"}'; exit; }
 	if ( 'reset' === $_GET['nordic_import'] ) { delete_option( 'nordic_import_state' ); echo '{"reset":true}'; exit; }
+	if ( 'export' === $_GET['nordic_import'] ) {
+		// Header/footer med klasser og variabler, til kopiering til et andet Nordic-site (samme format som Specialklinikkens eksport).
+		$admins = get_users( array( 'role' => 'administrator', 'number' => 1, 'orderby' => 'ID' ) );
+		wp_set_current_user( $admins[0]->ID );
+		$st0 = get_option( 'nordic_import_state', array() );
+		$o = array( 'classes' => nordic_imp_ability( 'elementor/read-resource', array( 'uri' => 'elementor://global-classes' ) ),
+			'vars' => nordic_imp_ability( 'elementor/read-resource', array( 'uri' => 'elementor://global-variables' ) ), 'posts' => array() );
+		foreach ( array( 'hf:type_header', 'hf:type_footer' ) as $k ) {
+			if ( empty( $st0['vars'][ $k ] ) ) { continue; }
+			$pid = (int) $st0['vars'][ $k ]; $m = array();
+			foreach ( array( '_elementor_data', '_elementor_page_settings', '_elementor_template_type', '_elementor_edit_mode', '_elementor_version', '_wp_page_template', 'ehf_target_include_locations', 'ehf_target_exclude_locations', 'ehf_target_user_roles', 'ehf_template_type' ) as $mk ) { $m[ $mk ] = get_post_meta( $pid, $mk, true ); }
+			$o['posts'][ $pid ] = array( 'post_title' => get_the_title( $pid ), 'meta' => $m );
+		}
+		echo wp_json_encode( $o ); exit;
+	}
 	if ( 'dump' === $_GET['nordic_import'] ) {
 		// Viser header/footer-data, så rettelser kan beregnes præcist.
 		$st0 = get_option( 'nordic_import_state', array() );
