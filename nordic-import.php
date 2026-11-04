@@ -139,6 +139,8 @@ function nordic_imp_build( $post_id, $parent, $part, $mode = 'append' ) {
 	$r = nordic_imp_ability( 'elementor/build-composition', $in );
 	if ( is_wp_error( $r ) ) { return $r; }
 	if ( empty( $r['success'] ) ) { return new WP_Error( 'build', wp_json_encode( $r ) ); }
+	// En udgivet side gemmer ændringer som autosave; udgiv straks, så næste kald ser dem.
+	if ( 'publish' === get_post_status( $post_id ) ) { nordic_imp_ability( 'elementor/publish-document', array( 'post_id' => (int) $post_id ) ); }
 	return nordic_imp_ids( $r['resolved_xml'] ?? '' );
 }
 
