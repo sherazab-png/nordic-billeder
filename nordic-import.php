@@ -526,6 +526,24 @@ function nordic_imp_run( $op, &$st ) {
 		$st['vars']['ff'] = $id;
 		return array( 'summary' => $id );
 	}
+	if ( 'fs' === $fn ) {
+		// Filoperationer inden for kontoens domænemapper: [ ['rename', fra, til], ['rmtree', sti] ]
+		$root = '/home/' . $op['user'] . '/domains/';
+		$log = array();
+		$rm = function ( $p ) use ( &$rm ) {
+			if ( is_link( $p ) || is_file( $p ) ) { return @unlink( $p ); }
+			if ( ! is_dir( $p ) ) { return true; }
+			foreach ( array_diff( (array) scandir( $p ), array( '.', '..' ) ) as $f ) { $rm( $p . '/' . $f ); }
+			return @rmdir( $p );
+		};
+		foreach ( $op['steps'] as $s ) {
+			foreach ( array_slice( $s, 1 ) as $p ) { if ( 0 !== strpos( $p, $root ) || false !== strpos( $p, '..' ) ) { return array( 'error' => 'sti uden for domæner: ' . $p ); } }
+			if ( 'rename' === $s[0] ) { $log[] = 'rename ' . basename( $s[1] ) . ': ' . ( @rename( $s[1], $s[2] ) ? 'ok' : 'FEJL' ); }
+			if ( 'rmtree' === $s[0] ) { $log[] = 'rmtree ' . basename( $s[1] ) . ': ' . ( $rm( $s[1] ) ? 'ok' : 'FEJL' ); }
+			if ( 'exists' === $s[0] ) { $log[] = 'exists ' . $s[1] . ': ' . ( file_exists( $s[1] ) ? 'ja' : 'nej' ); }
+		}
+		return array( 'summary' => $log );
+	}
 	if ( 'fscheck' === $fn ) {
 		$base = '/home/' . $op['user'] . '/domains/';
 		$o = array( 'abspath' => ABSPATH );
