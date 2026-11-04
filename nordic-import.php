@@ -136,7 +136,7 @@ add_action( 'init', function () {
 		$ran[] = $op['id'];
 		update_option( 'nordic_import_state', $st, false );
 	}
-	echo wp_json_encode( array( 'done' => count( $st['done'] ), 'total' => count( $plan['ops'] ), 'ran' => $ran, 'vars' => $st['vars'], 'log' => array_slice( $st['log'], -10 ) ) );
+	echo wp_json_encode( array( 'done' => count( $st['done'] ), 'total' => count( $plan['ops'] ), 'ran' => $ran, 'res' => array_intersect_key( $st['done'], array_flip( $ran ) ), 'vars' => $st['vars'], 'log' => array_slice( $st['log'], -10 ) ) );
 	exit;
 }, 1 );
 
@@ -439,6 +439,22 @@ function nordic_imp_run( $op, &$st ) {
 		update_option( '_fluentform_global_form_settings', $g, 'no' );
 		$st['vars']['ff'] = $id;
 		return array( 'summary' => $id );
+	}
+	if ( 'maildiag' === $fn ) {
+		// Fejlsøgning af formular-mail: seneste indsendelser, Fluent Forms-log og én testmail med fuld fejltekst.
+		global $wpdb;
+		$o = array();
+		$o['subs'] = $wpdb->get_results( "SELECT id, form_id, created_at, status FROM {$wpdb->prefix}fluentform_submissions ORDER BY id DESC LIMIT 5", ARRAY_A );
+		$o['logs'] = $wpdb->get_results( "SELECT created_at, title, status, description FROM {$wpdb->prefix}fluentform_logs ORDER BY id DESC LIMIT 8", ARRAY_A );
+		$o['notif'] = $wpdb->get_var( $wpdb->prepare( "SELECT value FROM {$wpdb->prefix}fluentform_form_meta WHERE meta_key='notifications' AND form_id=%d", (int) nordic_imp_subst( '{{ff}}', $st['vars'] ) ) );
+		$o['smtp_plugins'] = array_values( array_filter( (array) get_option( 'active_plugins' ), function ( $p ) { return false !== stripos( $p, 'smtp' ) || false !== stripos( $p, 'mail' ); } ) );
+		$err = null;
+		add_action( 'wp_mail_failed', function ( $e ) use ( &$err ) { $err = $e->get_error_message(); } );
+		if ( ! empty( $op['send_to'] ) ) {
+			$o['sent'] = wp_mail( $op['send_to'], 'Test fra hjemmesiden ' . wp_parse_url( home_url(), PHP_URL_HOST ), "Teknisk test af formular-mail fra hjemmesiden. Kan slettes.\n", array( 'From: Nordic Specialhospital <' . $op['from'] . '>' ) );
+			$o['err'] = $err;
+		}
+		return array( 'summary' => $o );
 	}
 	if ( 'ff_mail' === $fn ) {
 		// Afsender på formularens mail: fast adresse (SPF-godkendt) + svar-til patientens e-mail, hvis udfyldt.
