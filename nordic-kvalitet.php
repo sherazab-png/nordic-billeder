@@ -199,6 +199,7 @@ add_action( 'template_redirect', function () {
 
 /* Almindelig bindestreg i sidetitler (fx 404-siden) i stedet for lang tankestreg */
 add_filter( 'document_title_separator', function () { return '-'; } );
+add_filter( 'document_title', function ( $t ) { return str_replace( array( '&#8211;', '&#8212;', '–', '—' ), '-', $t ); }, 99 );
 
 /* Sitemap: kun sider */
 add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
