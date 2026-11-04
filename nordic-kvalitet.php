@@ -284,6 +284,13 @@ add_action( 'wp_default_scripts', function ( $scripts ) {
 	if ( ! is_admin() && isset( $scripts->registered['jquery'] ) ) { $scripts->registered['jquery']->deps = array_diff( $scripts->registered['jquery']->deps, array( 'jquery-migrate' ) ); }
 } );
 add_action( 'wp_head', function () {
+	// Faneikon og ikon til hjemmeskærm (logomærket), medmindre der er valgt et webstedsikon i WordPress.
+	if ( ! has_site_icon() ) {
+		$ik = home_url( '/nordic-media/ikoner/' );
+		echo '<link rel="icon" href="' . esc_url( $ik . 'favicon.ico' ) . '" sizes="any">' . "\n";
+		echo '<link rel="icon" href="' . esc_url( $ik . 'favicon-32.png' ) . '" type="image/png" sizes="32x32">' . "\n";
+		echo '<link rel="apple-touch-icon" href="' . esc_url( $ik . 'apple-touch-icon.png' ) . '">' . "\n";
+	}
 	// Link i samtykketeksten understreges som i udkastet (tydeligt link i tekst).
 	echo '<style id="nordic-kvalitet-css">.frm-fluent-form .ff_t_c a,.frm-fluent-form .ff-el-tc a{text-decoration:underline}'
 		// Meget smalle skærme (under 380 px) som udkastets header: mindre logo, ingen prikker i klinikbjælken
