@@ -76,8 +76,11 @@ function nordic_k_fix( $html ) {
 	if ( false === stripos( $html, '<html' ) ) { return $html; }
 	$sizes = nordic_k_sizes();
 	$first = true;
+	// Sider uden eget hovedindhold (fx Specialklinikkens forside): Elementors sideindpakning bliver hovedindholdet (landmark + skiplink + LCP).
+	if ( false === stripos( $html, 'id="hovedindhold"' ) && false === stripos( $html, '<main' ) ) {
+		$html = preg_replace( '/<div((?![^>]*\sid=)[^>]*\sdata-elementor-type="wp-page"[^>]*)>/', '<div$1 id="hovedindhold" role="main">', $html, 1 );
+	}
 	$main = stripos( $html, 'id="hovedindhold"' );
-	if ( false === $main ) { $main = stripos( $html, 'id="content"' ); } // fx Specialklinikkens forside
 	$html = preg_replace_callback( '/<img\b[^>]*>/i', function ( $m ) use ( $sizes, &$first, $main, &$html ) {
 		$t = $m[0];
 		$t = preg_replace( '/\sid="\d+"/', '', $t ); // Elementor giver billeder vedhæftnings-id som HTML-id (dubletter)
