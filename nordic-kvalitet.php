@@ -189,6 +189,7 @@ add_action( 'template_redirect', function () {
 
 /* Sikkerhedsheaders. HSTS uden includeSubDomains (rammer kun det enkelte domæne).
    CSP: alt fra eget domæne; inline er tilladt, fordi Elementor og Fluent Forms bruger inline-kode.
+   CSP sendes som Report-Only: håndhævet CSP fik Googles Lighthouse til at fejle (robots.txt-hentning, Speed Index 15 s -> 2 s, SEO 92 -> 100).
    CSP sendes ikke til indloggede brugere, så Elementor-editoren og adminbjælken ikke påvirkes. */
 add_action( 'send_headers', function () {
 	if ( is_admin() ) { return; }
