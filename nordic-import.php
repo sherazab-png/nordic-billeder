@@ -526,6 +526,15 @@ function nordic_imp_run( $op, &$st ) {
 		$st['vars']['ff'] = $id;
 		return array( 'summary' => $id );
 	}
+	if ( 'opts' === $fn ) {
+		global $wpdb;
+		$o = array();
+		foreach ( $op['like'] as $l ) {
+			foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT option_name, LEFT(option_value,300) v FROM $wpdb->options WHERE option_name LIKE %s LIMIT 30", $l ), ARRAY_A ) as $r ) { $o[ $r['option_name'] ] = $r['v']; }
+		}
+		$o['_files'] = array( 'maintenance' => file_exists( ABSPATH . '.maintenance' ), 'mu' => array_values( array_diff( (array) @scandir( WP_CONTENT_DIR . '/mu-plugins' ), array( '.', '..' ) ) ) );
+		return array( 'summary' => $o );
+	}
 	if ( 'fs' === $fn ) {
 		// Filoperationer inden for kontoens domænemapper: [ ['rename', fra, til], ['rmtree', sti] ]
 		$root = '/home/' . $op['user'] . '/domains/';
