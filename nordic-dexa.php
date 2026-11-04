@@ -19,11 +19,17 @@ function nordic_dexa_fix( $html ) {
 	if ( false === stripos( $html, '<main' ) && false === stripos( $html, 'id="content"' ) ) {
 		$html = preg_replace( '/<div((?![^>]*\sid=)[^>]*\sdata-elementor-type="wp-page"[^>]*)>/', '<div$1 id="content" role="main" tabindex="-1">', $html, 1 );
 	}
+	// Første sektion (hero) må ikke vente på Elementors dovne baggrundsbilleder (ellers forsinkes LCP til JavaScript har kørt).
+	$wp = stripos( $html, 'data-elementor-type="wp-page"' );
+	if ( false !== $wp && preg_match( '/<div class="(elementor-element [^"]*\be-con\b[^"]*\be-parent\b[^"]*)"/', $html, $m, PREG_OFFSET_CAPTURE, $wp ) && false === strpos( $m[1][0], 'e-lazyloaded' ) ) {
+		$html = substr_replace( $html, $m[1][0] . ' e-lazyloaded', $m[1][1], strlen( $m[1][0] ) );
+	}
 	// Logo-links uden tekst får et navn; logoet indlæses straks (undgår layoutskift).
 	$html = preg_replace_callback( '/<a href="https:\/\/nordicdexascan\.dk\/?">(\s*<img\b)([^>]*)>/i', function ( $m ) {
 		$img = $m[2];
 		if ( false === stripos( $img, 'data-no-lazy' ) ) { $img = ' data-no-lazy="1"' . $img; }
 		$img = preg_replace( '/\sfetchpriority="high"/i', '', $img ); // hero-billedet skal have forrang
+		$img = preg_replace( '/\ssizes="[^"]*"/i', ' sizes="260px"', $img ); // logoet vises ca. 250 px bredt - hent ikke 1024 px-versionen
 		return '<a href="https://nordicdexascan.dk/" aria-label="Nordic DEXA Scan - forside">' . $m[1] . $img . '>';
 	}, $html );
 	// Statusbjælker (eksempelresultater) får navn efter overskriften lige før.
