@@ -197,6 +197,7 @@ function nordic_imp_walk( &$list, $o, &$hit ) {
 			$hit = true;
 			switch ( $o[0] ) {
 				case 'text': $e['settings'][ $o[2] ] = array( '$$type' => 'escaped-html', 'value' => $o[3] ); break;
+				case 'set': $e['settings'][ $o[2] ] = $o[3]; break;
 				case 'url': $e['settings']['link']['value']['destination'] = array( '$$type' => 'url', 'value' => $o[2] ); break;
 				case 'img':
 					$src = array( 'url' => array( '$$type' => 'url', 'value' => $o[2] ) );
