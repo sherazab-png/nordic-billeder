@@ -48,6 +48,7 @@ add_action( 'wp_head', function () {
 		. "$f .ff-btn-submit{background:#183A70!important;color:#FFFFFF!important;border:0;padding:17px 30px;border-radius:100px;font-family:Manrope;font-weight:700;font-size:15px}"
 		. "$f .ff-btn-submit:focus-visible{outline:2px solid #183A70;outline-offset:2px}"
 		. "$f .ff_submit_btn_wrapper{margin-bottom:0}";
+	$css .= (string) get_option( 'nordic_css', '' );
 	echo '<style id="nordic-tillaeg">' . $css . "</style>\n";
 }, 99 );
 
@@ -139,6 +140,48 @@ function nordic_imp_build( $post_id, $parent, $part, $mode = 'append' ) {
 	if ( is_wp_error( $r ) ) { return $r; }
 	if ( empty( $r['success'] ) ) { return new WP_Error( 'build', wp_json_encode( $r ) ); }
 	return nordic_imp_ids( $r['resolved_xml'] ?? '' );
+}
+
+/* Ny kopi af et element med nye id'er (id + endelse), også for lokale stil-id'er. */
+function nordic_imp_clone( $e, $suf ) {
+	$e['id'] = substr( $e['id'] . $suf, 0, 12 );
+	if ( ! empty( $e['styles'] ) ) {
+		$ns = array();
+		foreach ( $e['styles'] as $sid => $sv ) {
+			$nid = $sid . $suf; $sv['id'] = $nid; $ns[ $nid ] = $sv;
+			if ( isset( $e['settings']['classes']['value'] ) ) {
+				foreach ( $e['settings']['classes']['value'] as $i => $c ) { if ( $c === $sid ) { $e['settings']['classes']['value'][ $i ] = $nid; } }
+			}
+		}
+		$e['styles'] = $ns;
+	}
+	foreach ( (array) ( $e['elements'] ?? array() ) as $i => $c ) { $e['elements'][ $i ] = nordic_imp_clone( $c, $suf ); }
+	return $e;
+}
+
+function nordic_imp_walk( &$list, $o, &$hit ) {
+	foreach ( $list as $i => &$e ) {
+		if ( $e['id'] === $o[1] ) {
+			$hit = true;
+			switch ( $o[0] ) {
+				case 'text': $e['settings'][ $o[2] ] = array( '$$type' => 'escaped-html', 'value' => $o[3] ); break;
+				case 'url': $e['settings']['link']['value']['destination'] = array( '$$type' => 'url', 'value' => $o[2] ); break;
+				case 'img':
+					$src = array( 'url' => array( '$$type' => 'url', 'value' => $o[2] ) );
+					if ( isset( $e['settings']['image']['value']['src']['value']['alt'] ) ) { $src['alt'] = $e['settings']['image']['value']['src']['value']['alt']; }
+					$e['settings']['image']['value']['src'] = array( '$$type' => 'image-src', 'value' => $src ); break;
+				case 'unclass':
+					$e['settings']['classes']['value'] = array_values( array_diff( $e['settings']['classes']['value'], array( $o[2] ) ) );
+					unset( $e['styles'][ $o[2] ] ); break;
+				case 'style': // [style, id, stil-id, stilobjekt]
+					$e['styles'][ $o[2] ] = $o[3];
+					$e['settings']['classes']['value'][] = $o[2]; break;
+				case 'dup': array_splice( $list, $i + 1, 0, array( nordic_imp_clone( $e, $o[2] ) ) ); return;
+			}
+			return;
+		}
+		if ( ! empty( $e['elements'] ) ) { nordic_imp_walk( $e['elements'], $o, $hit ); if ( $hit ) { return; } }
+	}
 }
 
 function nordic_imp_run( $op, &$st ) {
@@ -244,6 +287,24 @@ function nordic_imp_run( $op, &$st ) {
 		delete_post_meta( $pid, '_elementor_element_cache' );
 		if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => count( $op['pairs'] ) );
+	}
+	if ( 'tree' === $fn ) {
+		// Rettelser i et Elementor-dokuments træ: tekst, link, billede, klasser, kopi af element.
+		$pid = (int) nordic_imp_subst( $op['post'], $st['vars'] );
+		$tree = json_decode( (string) get_post_meta( $pid, '_elementor_data', true ), true );
+		if ( ! is_array( $tree ) ) { return array( 'error' => 'intet træ' ); }
+		$miss = array();
+		foreach ( $op['ops'] as $o ) {
+			$hit = false;
+			nordic_imp_walk( $tree, $o, $hit );
+			if ( ! $hit ) { $miss[] = $o[1]; }
+		}
+		if ( $miss ) { return array( 'error' => 'ikke fundet: ' . implode( ',', $miss ) ); }
+		update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
+		delete_post_meta( $pid, '_elementor_css' );
+		delete_post_meta( $pid, '_elementor_element_cache' );
+		if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => count( $op['ops'] ) );
 	}
 	if ( 'options' === $fn ) {
 		foreach ( $op['options'] as $k => $v ) { update_option( $k, nordic_imp_subst( $v, $st['vars'] ) ); }
