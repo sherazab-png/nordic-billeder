@@ -398,3 +398,25 @@ add_action( 'wp_footer', function () {
 		. "document.addEventListener('keydown',function(e){if(e.key==='Escape'){D().forEach(function(x){x.open=false;var s=x.querySelector('summary');if(s&&x.contains(document.activeElement))s.focus()})}});"
 		. "document.addEventListener('click',function(e){if(!h.contains(e.target))D().forEach(function(x){x.open=false})});})();</script>\n";
 }, 99 );
+
+/* Cache-opvarmning: efter tømning af LiteSpeed-cachen (og dagligt) hentes alle sider én ad gangen,
+   så besøgende og Google altid får en cachet side, og databasen ikke belastes af mange samtidige kald. */
+function nordic_k_warm() {
+	$urls = array( home_url( '/' ) );
+	foreach ( get_pages( array( 'post_status' => 'publish', 'number' => 200 ) ) as $p ) {
+		if ( in_array( $p->post_name, array( 'side-ikke-fundet', 'siden-findes-ikke' ), true ) ) { continue; }
+		$urls[] = get_permalink( $p );
+	}
+	foreach ( array_unique( $urls ) as $u ) {
+		wp_remote_get( $u, array( 'timeout' => 20, 'redirection' => 0, 'user-agent' => 'Nordic cache warmer', 'sslverify' => true ) );
+		usleep( 400000 );
+	}
+}
+add_action( 'nordic_k_warm_event', 'nordic_k_warm' );
+add_action( 'litespeed_purged_all', function () {
+	if ( ! wp_next_scheduled( 'nordic_k_warm_event' ) ) { wp_schedule_single_event( time() + 30, 'nordic_k_warm_event' ); }
+} );
+add_action( 'init', function () {
+	if ( ! wp_next_scheduled( 'nordic_k_warm_daily' ) ) { wp_schedule_event( time() + 3600, 'daily', 'nordic_k_warm_daily' ); }
+} );
+add_action( 'nordic_k_warm_daily', 'nordic_k_warm' );
