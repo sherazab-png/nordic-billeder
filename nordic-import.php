@@ -440,6 +440,21 @@ function nordic_imp_run( $op, &$st ) {
 		$st['vars']['ff'] = $id;
 		return array( 'summary' => $id );
 	}
+	if ( 'ff_mail' === $fn ) {
+		// Afsender på formularens mail: fast adresse (SPF-godkendt) + svar-til patientens e-mail, hvis udfyldt.
+		global $wpdb;
+		$id = (int) nordic_imp_subst( $op['form'] ?? '{{ff}}', $st['vars'] );
+		$t = $wpdb->prefix . 'fluentform_form_meta';
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, value FROM $t WHERE form_id = %d AND meta_key = 'notifications'", $id ) );
+		if ( ! $rows ) { return array( 'error' => 'ingen notifikation for formular ' . $id ); }
+		foreach ( $rows as $r ) {
+			$v = json_decode( $r->value, true );
+			$v['fromEmail'] = $op['from_email'];
+			$v['replyTo'] = '{inputs.email}';
+			$wpdb->update( $t, array( 'value' => wp_json_encode( $v ) ), array( 'id' => $r->id ) );
+		}
+		return array( 'summary' => count( $rows ) );
+	}
 	if ( 'clear_cache' === $fn ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => 'ok' );
