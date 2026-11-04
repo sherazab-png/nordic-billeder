@@ -187,13 +187,19 @@ add_action( 'template_redirect', function () {
 	ob_start( 'nordic_k_fix' );
 }, 0 );
 
-/* Sikkerhedsheaders (sikre standarder; HSTS og CSP tages ved lancering) */
+/* Sikkerhedsheaders. HSTS uden includeSubDomains (rammer kun det enkelte domæne).
+   CSP: alt fra eget domæne; inline er tilladt, fordi Elementor og Fluent Forms bruger inline-kode.
+   CSP sendes ikke til indloggede brugere, så Elementor-editoren og adminbjælken ikke påvirkes. */
 add_action( 'send_headers', function () {
 	if ( is_admin() ) { return; }
 	header( 'X-Content-Type-Options: nosniff' );
 	header( 'Referrer-Policy: strict-origin-when-cross-origin' );
 	header( 'X-Frame-Options: SAMEORIGIN' );
 	header( 'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()' );
+	if ( is_ssl() ) { header( 'Strict-Transport-Security: max-age=31536000' ); }
+	if ( ! is_user_logged_in() && ! isset( $_GET['elementor-preview'] ) ) {
+		header( "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests" );
+	}
 } );
 
 /* Oprydning: ingen XML-RPC, ingen versionsnummer, ingen emoji-scripts, ingen brugeropremsning */
@@ -222,6 +228,29 @@ add_filter( 'document_title', function ( $t ) { return str_replace( array( '&#82
 /* Sitemap: kun sider */
 add_filter( 'wp_sitemaps_add_provider', function ( $p, $name ) { return in_array( $name, array( 'users', 'taxonomies' ), true ) ? false : $p; }, 10, 2 );
 add_filter( 'wp_sitemaps_post_types', function ( $t ) { return array_intersect_key( $t, array( 'page' => 1 ) ); } );
+
+/* 404-side i klinikkens design: indholdet redigeres i Elementor på siden "Siden findes ikke" (slug side-ikke-fundet). */
+function nordic_k_404_page() {
+	$p = get_page_by_path( 'side-ikke-fundet' );
+	return ( $p && 'publish' === $p->post_status ) ? $p : null;
+}
+add_filter( 'template_include', function ( $t ) {
+	if ( is_404() && nordic_k_404_page() && class_exists( '\\Elementor\\Plugin' ) ) { return __DIR__ . '/404.php'; }
+	return $t;
+}, 99 );
+add_filter( 'document_title_parts', function ( $parts ) {
+	if ( is_404() && nordic_k_404_page() ) { $parts['title'] = 'Siden findes ikke'; }
+	return $parts;
+} );
+add_filter( 'wp_robots', function ( $r ) {
+	if ( is_page( 'side-ikke-fundet' ) ) { $r['noindex'] = true; }
+	return $r;
+} );
+add_filter( 'wp_sitemaps_posts_query_args', function ( $args ) {
+	$p = nordic_k_404_page();
+	if ( $p ) { $args['post__not_in'] = array_merge( (array) ( $args['post__not_in'] ?? array() ), array( $p->ID ) ); }
+	return $args;
+} );
 
 /* Hastighed: egne skrifttyper (kun de brugte vægte, font-display: swap) i stedet for Google Fonts med alle vægte,
    og ingen ikon- og widget-styles, som siderne ikke bruger. */
