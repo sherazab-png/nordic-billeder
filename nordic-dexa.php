@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.1
+ * Version: 1.2
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -36,6 +36,12 @@ function nordic_dexa_fix( $html ) {
 		if ( false === stripos( $img, 'data-no-lazy' ) ) { $img = ' data-no-lazy="1"' . $img; }
 		$img = preg_replace( '/\sfetchpriority="high"/i', '', $img ); // hero-billedet skal have forrang
 		$img = preg_replace( '/\ssizes="[^"]*"/i', ' sizes="260px"', $img ); // logoet vises ca. 250 px bredt - hent ikke 1024 px-versionen
+		// Logoet som WebP (16-28 KB i stedet for 57-90 KB PNG). Samme billede, samme mål.
+		if ( false !== strpos( $img, '7050f406-fc18-419f-a21d-562c33540744-Edited' ) ) {
+			$u = plugins_url( '', __FILE__ );
+			$img = preg_replace( '/\ssrcset="[^"]*"/i', ' srcset="' . $u . '/logo-520.webp 520w, ' . $u . '/logo-780.webp 780w"', $img );
+			$img = preg_replace( '/\ssrc="[^"]*"/i', ' src="' . $u . '/logo-520.webp"', $img );
+		}
 		return '<a href="https://nordicdexascan.dk/" aria-label="Nordic DEXA Scan - forside">' . $m[1] . $img . '>';
 	}, $html );
 	// Statusbjælker (eksempelresultater) får navn efter overskriften lige før.
