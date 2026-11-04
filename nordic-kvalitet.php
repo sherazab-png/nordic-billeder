@@ -104,7 +104,7 @@ function nordic_k_fix( $html ) {
 		return preg_match( '/\srel=/i', $m[0] ) ? $m[0] : preg_replace( '/^<a\b/i', '<a rel="noopener"', $m[0] );
 	}, $html );
 	// Temaets <main id="content"> omkring siden giver to main-landmarks: gør det til en div, når siden har sit eget <main>.
-	if ( false !== $main && preg_match( '/<main id="content"([^>]*)>/', $html ) ) {
+	if ( preg_match( '/<main\b[^>]*id="hovedindhold"/', $html ) && preg_match( '/<main id="content"([^>]*)>/', $html ) ) {
 		$html = preg_replace( '/<main id="content"([^>]*)>/', '<div id="content"$1>', $html, 1 );
 		$p = strrpos( $html, '</main>' );
 		if ( false !== $p ) { $html = substr_replace( $html, '</div>', $p, 7 ); }
@@ -237,6 +237,8 @@ add_action( 'wp_default_scripts', function ( $scripts ) {
 	if ( ! is_admin() && isset( $scripts->registered['jquery'] ) ) { $scripts->registered['jquery']->deps = array_diff( $scripts->registered['jquery']->deps, array( 'jquery-migrate' ) ); }
 } );
 add_action( 'wp_head', function () {
+	// Link i samtykketeksten understreges som i udkastet (tydeligt link i tekst).
+	echo '<style id="nordic-kvalitet-css">.frm-fluent-form .ff_t_c a,.frm-fluent-form .ff-el-tc a{text-decoration:underline}</style>' . "\n";
 	$base = home_url( '/nordic-media/fonts/' );
 	foreach ( array( 'manrope-latin-400-normal', 'manrope-latin-700-normal', 'cormorant-garamond-latin-700-normal' ) as $f ) {
 		echo '<link rel="preload" href="' . esc_url( $base . $f . '.woff2' ) . '" as="font" type="font/woff2" crossorigin>' . "\n";
