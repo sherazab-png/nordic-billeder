@@ -556,6 +556,36 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'html_strip' === $fn ) {
+		// Fjern et regex-mønster fra HTML-widgets i alle publicerede Elementor-sider (backup i meta _nordic_bk_<op-id>).
+		global $wpdb;
+		$ids = $wpdb->get_col( "SELECT p.ID FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish'" );
+		$log = array();
+		foreach ( $ids as $pid ) {
+			$raw = (string) get_post_meta( (int) $pid, '_elementor_data', true );
+			$tree = json_decode( $raw, true );
+			if ( ! is_array( $tree ) ) { continue; }
+			$n = 0;
+			$walk = function ( &$els ) use ( &$walk, &$n, $op ) {
+				foreach ( $els as &$e ) {
+					if ( isset( $e['settings']['html'] ) && is_string( $e['settings']['html'] ) ) {
+						$e['settings']['html'] = preg_replace( $op['re'], '', $e['settings']['html'], -1, $c );
+						$n += $c;
+					}
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
+				}
+			};
+			$walk( $tree );
+			if ( $n && empty( $op['dry'] ) ) {
+				update_post_meta( (int) $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) );
+				update_post_meta( (int) $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
+				delete_post_meta( (int) $pid, '_elementor_css' );
+			}
+			if ( $n ) { $log[ $pid ] = $n; }
+		}
+		if ( empty( $op['dry'] ) && class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => $log );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
