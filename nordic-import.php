@@ -486,7 +486,7 @@ function nordic_imp_run( $op, &$st ) {
 		};
 		$fields = array(
 			$radio( 'el_1', 'ydelse', '1. Hvad drejer det sig om?', $op['ydelser'], 'Vælg hvad det drejer sig om' ),
-			$radio( 'el_2', 'patienttype', '2. Hvordan er du patient?', array( 'Privat', 'Forsikring', 'Offentlig - ventetidsgaranti' ), 'Vælg hvordan du er patient' ),
+			$radio( 'el_2', 'patienttype', '2. Hvordan er du patient?', $op['patienttyper'] ?? array( 'Privat', 'Forsikring', 'Offentlig - ventetidsgaranti' ), 'Vælg hvordan du er patient' ),
 			$html( 'el_h3', '<p class="nsh-ff-legend">3. Dine kontaktoplysninger</p>' ),
 			$text( 'el_3', 'text', 'navn', 'Navn', 'name', true, 'Skriv dit navn' ),
 			$text( 'el_4', 'tel', 'telefon', 'Telefon', 'tel', true, 'Skriv dit telefonnummer' ),
@@ -742,6 +742,55 @@ function nordic_imp_run( $op, &$st ) {
 		$log = array();
 		foreach ( $op['set'] as $x ) { $log[] = $x[0] . ' ' . $x[1] . ' (før: ' . mb_substr( (string) get_post_meta( (int) $x[0], $x[1], true ), 0, 80 ) . ')'; update_post_meta( (int) $x[0], $x[1], wp_slash( $x[2] ) ); }
 		return array( 'summary' => $log );
+	}
+	if ( 'clone_page' === $fn ) {
+		// Ny side som kopi af en eksisterende Elementor-side: behold udvalgte topsektioner, fjern/ret elementer, indsæt nye efter et id.
+		$src = (int) $op['src'];
+		$vk = 'page:' . $op['key'];
+		$pid = (int) ( $st['vars'][ $vk ] ?? 0 );
+		if ( ! $pid ) {
+			$pid = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $op['title'], 'post_name' => $op['slug'] ) );
+			if ( ! $pid ) { return array( 'error' => 'kunne ikke oprette side' ); }
+			$st['vars'][ $vk ] = $pid; update_option( 'nordic_import_state', $st, false );
+		}
+		foreach ( array( '_elementor_edit_mode', '_elementor_template_type', '_elementor_version', '_elementor_pro_version', '_elementor_page_settings', '_wp_page_template' ) as $k ) {
+			$v = get_post_meta( $src, $k, true ); if ( '' !== $v ) { update_post_meta( $pid, $k, wp_slash( $v ) ); }
+		}
+		$tree = json_decode( (string) get_post_meta( $src, '_elementor_data', true ), true );
+		$tree = array_values( array_filter( $tree, function ( $e ) use ( $op ) { return in_array( $e['id'], $op['keep'], true ); } ) );
+		$json = wp_json_encode( $op['insert'] ?? array() );
+		$json = str_replace( '{{ff}}', (string) ( $st['vars']['ff'] ?? '' ), $json );
+		$insert = json_decode( $json, true );
+		$walk = function ( &$els ) use ( &$walk, $op, $insert ) {
+			$out = array();
+			foreach ( $els as $e ) {
+				if ( in_array( $e['id'], (array) ( $op['drop'] ?? array() ), true ) ) { continue; }
+				if ( isset( $op['set'][ $e['id'] ] ) ) { $e['settings'] = array_replace_recursive( (array) $e['settings'], (array) $op['set'][ $e['id'] ] ); }
+				if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
+				$out[] = $e;
+				foreach ( $insert as $after => $new ) { if ( $after === $e['id'] ) { foreach ( $new as $n ) { $out[] = $n; } } }
+			}
+			$els = $out;
+		};
+		$walk( $tree );
+		// Element-id'er beholdes: Elementors CSS er pr. side, så de kolliderer ikke.
+		update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
+		delete_post_meta( $pid, '_elementor_css' );
+		wp_update_post( array( 'ID' => $pid, 'post_title' => $op['title'], 'post_name' => $op['slug'], 'post_status' => 'publish' ) );
+		foreach ( (array) ( $op['meta'] ?? array() ) as $k => $v ) { update_post_meta( $pid, $k, wp_slash( $v ) ); }
+		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => $pid );
+	}
+	if ( 'menu_item' === $fn ) {
+		// Tilføj et link-menupunkt til den menu, som en nav-menu-widget i en skabelon bruger.
+		$tree = json_decode( (string) get_post_meta( (int) $op['tpl'], '_elementor_data', true ), true );
+		$find = function ( $els ) use ( &$find, $op ) { foreach ( $els as $e ) { if ( $e['id'] === $op['widget'] ) { return $e['settings']['menu'] ?? ''; } if ( ! empty( $e['elements'] ) && ( $r = $find( $e['elements'] ) ) ) { return $r; } } return ''; };
+		$slug = $find( $tree );
+		$menu = wp_get_nav_menu_object( $slug );
+		if ( ! $menu ) { return array( 'error' => 'menu ikke fundet: ' . $slug ); }
+		foreach ( (array) wp_get_nav_menu_items( $menu->term_id ) as $it ) { if ( $it->url === $op['url'] ) { return array( 'summary' => 'findes allerede ' . $it->ID ); } }
+		$id = wp_update_nav_menu_item( $menu->term_id, 0, array( 'menu-item-title' => $op['title'], 'menu-item-url' => $op['url'], 'menu-item-type' => 'custom', 'menu-item-status' => 'publish', 'menu-item-classes' => $op['classes'] ?? '', 'menu-item-position' => (int) ( $op['position'] ?? 99 ) ) );
+		return array( 'summary' => array( 'menu' => $slug, 'item' => $id ) );
 	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
