@@ -798,12 +798,13 @@ function nordic_imp_run( $op, &$st ) {
 		$ids = $wpdb->get_col( "SELECT p.ID FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish'" );
 		$log = array();
 		foreach ( $ids as $pid ) {
+			$GLOBALS['nordic_btn_pid'] = (int) $pid;
 			$raw = (string) get_post_meta( (int) $pid, '_elementor_data', true );
 			$tree = json_decode( $raw, true ); if ( ! is_array( $tree ) ) { continue; }
 			$n = 0;
 			$walk = function ( &$els ) use ( &$walk, &$n, $op ) {
 				foreach ( $els as &$e ) {
-					if ( 'button' === ( $e['widgetType'] ?? '' ) && trim( (string) ( $e['settings']['text'] ?? '' ) ) === $op['text'] && ( $e['settings']['link']['url'] ?? '' ) === $op['from'] ) { $e['settings']['link']['url'] = $op['to']; $n++; }
+					if ( 'button' === ( $e['widgetType'] ?? '' ) && trim( (string) ( $e['settings']['text'] ?? '' ) ) === $op['text'] && ( $e['settings']['link']['url'] ?? '' ) === $op['from'] && ( empty( $op['posts'] ) || in_array( $GLOBALS['nordic_btn_pid'], $op['posts'], true ) ) ) { $e['settings']['link']['url'] = $op['to']; if ( ! empty( $op['new_text'] ) ) { $e['settings']['text'] = $op['new_text']; } $n++; }
 					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
 				}
 			};
