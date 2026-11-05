@@ -819,6 +819,29 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $log );
 	}
+	if ( 'reorder' === $fn ) {
+		// Ny rækkefølge for børnene i en container: order = liste af barn-id'er (alle skal være med).
+		$pid = (int) $op['post'];
+		$raw = (string) get_post_meta( $pid, '_elementor_data', true );
+		$tree = json_decode( $raw, true ); $ok = false;
+		$walk = function ( &$els ) use ( &$walk, $op, &$ok ) {
+			foreach ( $els as &$e ) {
+				if ( $e['id'] === $op['parent'] ) {
+					$by = array(); foreach ( $e['elements'] as $k ) { $by[ $k['id'] ] = $k; }
+					if ( count( $by ) !== count( $op['order'] ) || array_diff( $op['order'], array_keys( $by ) ) ) { return; }
+					$e['elements'] = array_map( function ( $i ) use ( $by ) { return $by[ $i ]; }, $op['order'] ); $ok = true; return;
+				}
+				if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
+			}
+		};
+		$walk( $tree );
+		if ( ! $ok ) { return array( 'error' => 'reorder: forælder ikke fundet eller id-liste passer ikke' ); }
+		if ( ! metadata_exists( 'post', $pid, '_nordic_bk_' . $op['id'] ) ) { add_post_meta( $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) ); }
+		update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
+		delete_post_meta( $pid, '_elementor_css' ); delete_post_meta( $pid, '_elementor_element_cache' );
+		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => 'ok' );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
