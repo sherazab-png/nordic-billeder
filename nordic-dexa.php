@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.4
+ * Version: 1.5
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -70,7 +70,54 @@ function nordic_dexa_fix( $html ) {
 		$pos = $at + strlen( $mm[0][0] );
 	}
 	$html = $out . substr( $html, $pos );
-	return $html;
+	return nordic_dexa_schema( $html );
+}
+
+/* Strukturerede data: alle sider får klinik, website, side og brødkrumme; FAQ samles i én FAQPage ud fra sidens synlige spørgsmål. */
+function nordic_dexa_schema( $html ) {
+	if ( is_admin() || ! is_singular() ) { return $html; }
+	$base = 'https://nordicdexascan.dk';
+	// Fjern Elementors separate FAQPage-blokke (flere FAQPage på én side giver fejl i Search Console).
+	$html = preg_replace( '#<script type="application/ld\+json">\s*\{"@context":"https:\\\\/\\\\/schema\.org","@type":"FAQPage".*?</script>\s*#s', '', $html );
+	$faq = array();
+	if ( preg_match_all( '#<summary class="e-n-accordion-item-title".*?<div class="e-n-accordion-item-title-text">(.*?)</div>.*?</summary>(.*?)</details>#s', $html, $m, PREG_SET_ORDER ) ) {
+		foreach ( $m as $x ) {
+			$q = trim( html_entity_decode( wp_strip_all_tags( $x[1] ), ENT_QUOTES, 'UTF-8' ) );
+			$a = trim( preg_replace( '/\s+/', ' ', html_entity_decode( wp_strip_all_tags( str_replace( array( '</p>', '<br>', '</li>' ), array( '</p> ', ' ', '</li> ' ), $x[2] ) ), ENT_QUOTES, 'UTF-8' ) ) );
+			if ( $q && $a ) { $faq[] = array( '@type' => 'Question', 'name' => $q, 'acceptedAnswer' => array( '@type' => 'Answer', 'text' => $a ) ); }
+		}
+	}
+	$url = get_permalink();
+	$graph = array();
+	$has_rm = false !== strpos( $html, 'rank-math-schema' );
+	if ( ! $has_rm ) {
+		$graph[] = array(
+			'@type' => array( 'MedicalClinic', 'Organization' ), '@id' => $base . '/#organization', 'name' => 'Nordic DEXA Scan', 'url' => $base,
+			'email' => 'info@nordicspecialhospital.dk', 'telephone' => '+4577340036', 'legalName' => 'Nordic Specialhospital',
+			'address' => array( '@type' => 'PostalAddress', 'streetAddress' => 'Laurits Olsens Vej 1, 1. sal', 'postalCode' => '2650', 'addressLocality' => 'Hvidovre', 'addressRegion' => 'Region Hovedstaden', 'addressCountry' => 'DK' ),
+			'logo' => $base . '/wp-content/uploads/2026/10/Nordic-Dexa-Scan-2.png',
+		);
+		$graph[] = array( '@type' => 'WebSite', '@id' => $base . '/#website', 'url' => $base, 'name' => 'Nordic DEXA Scan', 'inLanguage' => 'da-DK', 'publisher' => array( '@id' => $base . '/#organization' ) );
+		$h1 = preg_match( '#<h1[^>]*>(.*?)</h1>#s', $html, $hm ) ? trim( preg_replace( '/\s+/', ' ', html_entity_decode( wp_strip_all_tags( $hm[1] ), ENT_QUOTES, 'UTF-8' ) ) ) : get_the_title();
+		$desc = preg_match( '#<meta name="description" content="([^"]*)"#', $html, $dm ) ? html_entity_decode( $dm[1], ENT_QUOTES, 'UTF-8' ) : '';
+		$legal = in_array( get_post_field( 'post_name' ), array( 'cookies', 'privatlivspolitik' ), true );
+		$page = array( '@type' => $legal ? 'WebPage' : 'MedicalWebPage', '@id' => $url . '#webpage', 'url' => $url, 'name' => $h1, 'inLanguage' => 'da-DK',
+			'isPartOf' => array( '@id' => $base . '/#website' ), 'about' => array( '@id' => $base . '/#organization' ), 'dateModified' => get_the_modified_date( 'c' ),
+			'breadcrumb' => array( '@id' => $url . '#breadcrumb' ) );
+		if ( $desc ) { $page['description'] = $desc; }
+		if ( ! $legal ) { $page['audience'] = array( '@type' => 'PeopleAudience', 'audienceType' => 'Patient' ); }
+		$graph[] = $page;
+	}
+	if ( ! is_front_page() ) {
+		$graph[] = array( '@type' => 'BreadcrumbList', '@id' => $url . '#breadcrumb', 'itemListElement' => array(
+			array( '@type' => 'ListItem', 'position' => 1, 'name' => 'Forside', 'item' => $base . '/' ),
+			array( '@type' => 'ListItem', 'position' => 2, 'name' => get_the_title(), 'item' => $url ),
+		) );
+	}
+	if ( $faq ) { $graph[] = array( '@type' => 'FAQPage', '@id' => $url . '#faq', 'mainEntity' => $faq ); }
+	if ( ! $graph ) { return $html; }
+	$json = wp_json_encode( array( '@context' => 'https://schema.org', '@graph' => $graph ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+	return preg_replace( '#</head>#', '<script type="application/ld+json" class="nordic-schema">' . str_replace( '</', '<\/', $json ) . '</script>' . "\n</head>", $html, 1 );
 }
 add_action( 'template_redirect', function () {
 	if ( is_admin() || is_feed() || wp_doing_ajax() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || isset( $_GET['elementor-preview'] ) ) { return; }
