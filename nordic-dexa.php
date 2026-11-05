@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.6
+ * Version: 1.7
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -76,7 +76,7 @@ function nordic_dexa_fix( $html ) {
 		$at = $mm[0][1];
 		$before = substr( $html, max( 0, $at - 1500 ), min( 1500, $at ) );
 		$label = '';
-		if ( preg_match_all( '/<h[1-6][^>]*>([^<]{1,60})<\/h[1-6]>/', $before, $hh ) ) { $label = trim( end( $hh[1] ) ); }
+		if ( preg_match_all( '/<(?:h[1-6]|p|div|span)[^>]*class="elementor-heading-title[^"]*"[^>]*>([^<]{1,60})</', $before, $hh ) ) { $label = trim( end( $hh[1] ) ); }
 		$tag = $mm[0][0] . ( $label ? ' aria-label="' . esc_attr( $label ) . '"' : '' );
 		$out .= substr( $html, $pos, $at - $pos ) . $tag;
 		$pos = $at + strlen( $mm[0][0] );
