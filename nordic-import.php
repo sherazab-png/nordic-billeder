@@ -647,6 +647,13 @@ function nordic_imp_run( $op, &$st ) {
 			foreach ( (array) glob( $d . '/*.{css,php}', GLOB_BRACE ) as $f ) { if ( false !== strpos( (string) file_get_contents( $f ), $op['q'] ) ) { $files[] = $f; } }
 		}
 		$o['files'] = array_values( array_unique( $files ) );
+		if ( ! empty( $op['ctx_all'] ) ) {
+			$o['ctx_all'] = array();
+			foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT m.post_id, m.meta_value FROM $wpdb->postmeta m JOIN $wpdb->posts p ON p.ID=m.post_id AND p.post_status='publish' WHERE m.meta_key='_elementor_data' AND m.meta_value LIKE %s", $q ), ARRAY_A ) as $r ) {
+				$v = $r['meta_value'];
+				for ( $i = strpos( $v, $op['q'] ); false !== $i && count( $o['ctx_all'] ) < 40; $i = strpos( $v, $op['q'], $i + 1 ) ) { $o['ctx_all'][] = $r['post_id'] . ' ' . get_post_field( 'post_name', $r['post_id'] ) . ': ' . substr( $v, max( 0, $i - 220 ), 380 ); }
+			}
+		}
 		if ( ! empty( $op['ctx_post'] ) ) {
 			$v = (string) get_post_meta( (int) $op['ctx_post'], '_elementor_data', true );
 			$o['ctx'] = array();
