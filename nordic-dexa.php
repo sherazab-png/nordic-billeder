@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.5
+ * Version: 1.6
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -32,6 +32,18 @@ add_action( 'wp_head', function () {
 	$sel = implode( ',', array_map( function ( $i ) { return '.elementor-element-' . $i . ' h3.elementor-heading-title'; }, array( '4e7b33d', '2f662f0', 'de6c368', '7137383', '0463f6c' ) ) );
 	echo '<style id="nordic-h4-udseende">' . $sel . '{font-family:"Manrope",Sans-serif;font-size:14px;letter-spacing:1px}@media(max-width:1024px){' . $sel . '{font-size:12px}}@media(max-width:767px){' . $sel . '{letter-spacing:0}}</style>' . "\n";
 }, 99 );
+
+/* Én fælles privatlivspolitik for alle Nordic-klinikker (ejerens beslutning 2026-10-25). */
+add_action( 'template_redirect', function () {
+	$path = trim( (string) wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ), '/' );
+	if ( 'privatlivspolitik' === $path && ! is_user_logged_in() ) {
+		wp_redirect( 'https://nordicspecialhospital.dk/privatlivspolitik/', 301, 'Nordic DEXA' );
+		exit;
+	}
+}, 0 );
+add_filter( 'rank_math/sitemap/entry', function ( $url, $type, $obj ) {
+	return ( 'post' === $type && isset( $obj->post_name ) && 'privatlivspolitik' === $obj->post_name ) ? false : $url;
+}, 10, 3 );
 
 function nordic_dexa_fix( $html ) {
 	if ( false === stripos( $html, '<html' ) ) { return $html; }
