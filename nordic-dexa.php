@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.8
+ * Version: 1.9
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -30,6 +30,7 @@ add_action( 'wp_head', function () {
 /* Fem kortetiketter på /dexa-scanning/ er ændret fra h4 til h3 (korrekt overskriftsrækkefølge). De beholder temaets h4-udseende. */
 add_action( 'wp_head', function () {
 	$sel = implode( ',', array_map( function ( $i ) { return '.elementor-element-' . $i . ' h3.elementor-heading-title'; }, array( '4e7b33d', '2f662f0', 'de6c368', '7137383', '0463f6c' ) ) );
+	echo '<style id="nordic-menu">.elementor-nav-menu--main .nordic-kun-mobil{display:none}</style>' . "\n";
 	echo '<style id="nordic-h4-udseende">' . $sel . '{font-family:"Manrope",Sans-serif;font-size:14px;letter-spacing:1px}@media(max-width:1024px){' . $sel . '{font-size:12px}}@media(max-width:767px){' . $sel . '{letter-spacing:0}}</style>' . "\n";
 }, 99 );
 
