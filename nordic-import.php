@@ -723,7 +723,7 @@ function nordic_imp_run( $op, &$st ) {
 			$tree = json_decode( $raw, true ); $hit = 0;
 			$walk = function ( &$els ) use ( &$walk, $id, $field, $from, $to, &$hit ) {
 				foreach ( $els as &$e ) {
-					if ( '*' === $field && ( '*' === $id || $e['id'] === $id ) ) {
+					if ( '*' === $field && ( '*' === $id || $e['id'] === $id ) && ! empty( $e['settings'] ) && is_array( $e['settings'] ) ) {
 						array_walk_recursive( $e['settings'], function ( &$v ) use ( $from, $to, &$hit ) { if ( is_string( $v ) && false !== strpos( $v, $from ) ) { $v = str_replace( $from, $to, $v ); $hit++; } } );
 					} elseif ( $e['id'] === $id ) {
 						if ( false !== strpos( $field, '.' ) ) { list( $a, $i, $b ) = explode( '.', $field ); $ref = &$e['settings'][ $a ][ (int) $i ][ $b ]; } else { $ref = &$e['settings'][ $field ]; }
