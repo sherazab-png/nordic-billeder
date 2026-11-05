@@ -633,6 +633,28 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $log );
 	}
+	if ( 'eltree' === $fn ) {
+		// Kompakt elementtræ med type, tekst og links for de angivne indlæg (kun læsning).
+		$o = array();
+		foreach ( (array) $op['ids'] as $pid ) {
+			$tree = json_decode( (string) get_post_meta( (int) $pid, '_elementor_data', true ), true );
+			$list = array();
+			$walk = function ( $els, $d ) use ( &$walk, &$list ) {
+				foreach ( (array) $els as $e ) {
+					$st = $e['settings'] ?? array(); $w = $e['widgetType'] ?? $e['elType'];
+					$txt = '';
+					foreach ( array( 'title', 'editor', 'text', 'title_text', 'description_text', 'button_text', 'html' ) as $k ) { if ( ! empty( $st[ $k ] ) && is_string( $st[ $k ] ) ) { $txt .= $k . '=' . mb_substr( preg_replace( '/\s+/', ' ', wp_strip_all_tags( $st[ $k ] ) ), 0, 70 ) . ' '; } }
+					if ( ! empty( $st['link']['url'] ) ) { $txt .= 'link=' . $st['link']['url'] . ' '; }
+					if ( ! empty( $st['icon_list'] ) ) { foreach ( $st['icon_list'] as $li ) { $txt .= '[' . mb_substr( wp_strip_all_tags( $li['text'] ?? '' ), 0, 40 ) . ( ! empty( $li['link']['url'] ) ? '->' . $li['link']['url'] : '' ) . '] '; } }
+					$list[] = str_repeat( ' ', $d ) . $e['id'] . ' ' . $w . ' ' . $txt;
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'], $d + 1 ); }
+				}
+			};
+			$walk( $tree, 0 );
+			$o[ $pid ] = $list;
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
