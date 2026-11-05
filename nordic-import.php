@@ -737,6 +737,12 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $log );
 	}
+	if ( 'postmeta' === $fn ) {
+		// Sæt metafelter: set: [ [post, nøgle, værdi], ... ]. Gammel værdi logges.
+		$log = array();
+		foreach ( $op['set'] as $x ) { $log[] = $x[0] . ' ' . $x[1] . ' (før: ' . mb_substr( (string) get_post_meta( (int) $x[0], $x[1], true ), 0, 80 ) . ')'; update_post_meta( (int) $x[0], $x[1], wp_slash( $x[2] ) ); }
+		return array( 'summary' => $log );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
