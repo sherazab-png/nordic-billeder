@@ -643,7 +643,10 @@ function nordic_imp_run( $op, &$st ) {
 				foreach ( (array) $els as $e ) {
 					$st = $e['settings'] ?? array(); $w = $e['widgetType'] ?? $e['elType'];
 					$txt = '';
-					foreach ( array( 'title', 'editor', 'text', 'title_text', 'description_text', 'button_text', 'html' ) as $k ) { if ( ! empty( $st[ $k ] ) && is_string( $st[ $k ] ) ) { $txt .= $k . '=' . mb_substr( preg_replace( '/\s+/', ' ', wp_strip_all_tags( $st[ $k ] ) ), 0, 70 ) . ' '; } }
+					foreach ( array( 'title', 'editor', 'text', 'title_text', 'description_text', 'button_text', 'html', 'paragraph' ) as $k ) {
+						$v = $st[ $k ] ?? ''; if ( is_array( $v ) && isset( $v['value'] ) && is_string( $v['value'] ) ) { $v = $v['value']; } elseif ( is_array( $v ) && isset( $v['value']['content']['value'] ) ) { $v = (string) $v['value']['content']['value']; }
+						if ( $v && is_string( $v ) ) { $txt .= $k . '=' . mb_substr( preg_replace( '/\s+/', ' ', wp_strip_all_tags( $v ) ), 0, 50 ) . ' '; }
+					}
 					if ( ! empty( $st['link']['url'] ) ) { $txt .= 'link=' . $st['link']['url'] . ' '; }
 					if ( ! empty( $st['icon_list'] ) ) { foreach ( $st['icon_list'] as $li ) { $txt .= '[' . mb_substr( wp_strip_all_tags( $li['text'] ?? '' ), 0, 40 ) . ( ! empty( $li['link']['url'] ) ? '->' . $li['link']['url'] : '' ) . '] '; } }
 					$list[] = str_repeat( ' ', $d ) . $e['id'] . ' ' . $w . ' ' . $txt;
@@ -710,7 +713,11 @@ function nordic_imp_run( $op, &$st ) {
 	if ( 'elrepl' === $fn ) {
 		// Erstat præcis tekst i et elements tekstfelt: [post, id, felt, fra, til]. Fejler hvis "fra" ikke findes.
 		$log = array();
+		$rows = array();
 		foreach ( $op['r'] as $r ) {
+			if ( '*' === $r[0] ) { global $wpdb; foreach ( $wpdb->get_col( "SELECT p.ID FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish'" ) as $x ) { $r[0] = (int) $x; $rows[] = $r; } } else { $rows[] = $r; }
+		}
+		foreach ( $rows as $r ) {
 			list( $pid, $id, $field, $from, $to ) = $r;
 			$raw = (string) get_post_meta( (int) $pid, '_elementor_data', true );
 			$tree = json_decode( $raw, true ); $hit = 0;
@@ -732,7 +739,7 @@ function nordic_imp_run( $op, &$st ) {
 				update_post_meta( (int) $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
 				delete_post_meta( (int) $pid, '_elementor_css' );
 			}
-			$log[] = $pid . '/' . $id . ': ' . ( $hit ? 'ok x' . $hit : 'IKKE FUNDET' );
+			if ( $hit || '*' !== $op['r'][0][0] ) { $log[] = $pid . '/' . $id . ': ' . ( $hit ? 'ok x' . $hit : 'IKKE FUNDET' ); }
 		}
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $log );
