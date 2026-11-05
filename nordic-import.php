@@ -492,7 +492,7 @@ function nordic_imp_run( $op, &$st ) {
 			$text( 'el_4', 'tel', 'telefon', 'Telefon', 'tel', true, 'Skriv dit telefonnummer' ),
 			$text( 'el_5', 'email', 'email', 'E-mail (valgfri)', 'email', false, '' ),
 			$radio( 'el_6', 'tidspunkt', '4. Hvornår må vi ringe?', array( 'Formiddag', 'Eftermiddag', 'Når som helst' ), 'Vælg hvornår vi må ringe' ),
-			$html( 'el_note', '<p class="nsh-ff-note">Skriv ikke helbredsoplysninger her. Dem gennemgår vi med dig i telefonen.</p>' ),
+			$html( 'el_note', '<p class="nsh-ff-note">' . ( $op['note'] ?? 'Skriv ikke helbredsoplysninger her. Dem gennemgår vi med dig i telefonen.' ) . '</p>' ),
 			array( 'index' => 0, 'element' => 'gdpr_agreement', 'attributes' => array( 'type' => 'checkbox', 'name' => 'samtykke', 'value' => false, 'data-type' => 'gdpr-agreement' ),
 				'settings' => array( 'label' => 'Samtykke', 'tnc_html' => $op['consent_html'], 'admin_field_label' => 'Samtykke', 'has_checkbox' => true, 'container_class' => '',
 					'validation_rules' => array( 'required' => array( 'value' => true, 'message' => 'Du skal acceptere for at sende' ) ), 'required_field_message' => '', 'conditional_logics' => array() ),
@@ -662,7 +662,7 @@ function nordic_imp_run( $op, &$st ) {
 		$raw = (string) get_post_meta( $pid, '_elementor_data', true );
 		$tree = json_decode( $raw, true );
 		$find = function ( $els, $id ) use ( &$find ) { foreach ( $els as $e ) { if ( $e['id'] === $id ) { return $e; } if ( ! empty( $e['elements'] ) && ( $r = $find( $e['elements'], $id ) ) ) { return $r; } } return null; };
-		$src = $find( $tree, $op['src'] );
+		$src = $find( ! empty( $op['src_post'] ) ? json_decode( (string) get_post_meta( (int) $op['src_post'], '_elementor_data', true ), true ) : $tree, $op['src'] );
 		if ( ! $src ) { return array( 'error' => 'src ikke fundet' ); }
 		$drop = (array) ( $op['drop'] ?? array() ); $set = (array) ( $op['set'] ?? array() ); $map = array();
 		$re = function ( $e ) use ( &$re, $drop, $set, &$map ) {
