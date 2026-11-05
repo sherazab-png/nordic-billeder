@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.7
+ * Version: 1.8
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -108,6 +108,7 @@ function nordic_dexa_schema( $html ) {
 			'email' => 'info@nordicspecialhospital.dk', 'telephone' => '+4577340036', 'legalName' => 'Nordic Specialhospital',
 			'address' => array( '@type' => 'PostalAddress', 'streetAddress' => 'Laurits Olsens Vej 1, 1. sal', 'postalCode' => '2650', 'addressLocality' => 'Hvidovre', 'addressRegion' => 'Region Hovedstaden', 'addressCountry' => 'DK' ),
 			'logo' => $base . '/wp-content/uploads/2026/10/Nordic-Dexa-Scan-2.png',
+			'openingHoursSpecification' => array( array( '@type' => 'OpeningHoursSpecification', 'dayOfWeek' => array( 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday' ), 'opens' => '09:00', 'closes' => '17:00' ) ),
 		);
 		$graph[] = array( '@type' => 'WebSite', '@id' => $base . '/#website', 'url' => $base, 'name' => 'Nordic DEXA Scan', 'inLanguage' => 'da-DK', 'publisher' => array( '@id' => $base . '/#organization' ) );
 		$h1 = preg_match( '#<h1[^>]*>(.*?)</h1>#s', $html, $hm ) ? trim( preg_replace( '/\s+/', ' ', html_entity_decode( wp_strip_all_tags( $hm[1] ), ENT_QUOTES, 'UTF-8' ) ) ) : get_the_title();
