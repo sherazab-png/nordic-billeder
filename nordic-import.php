@@ -792,6 +792,32 @@ function nordic_imp_run( $op, &$st ) {
 		$id = wp_update_nav_menu_item( $menu->term_id, 0, array( 'menu-item-title' => $op['title'], 'menu-item-url' => $op['url'], 'menu-item-type' => 'custom', 'menu-item-status' => 'publish', 'menu-item-classes' => $op['classes'] ?? '', 'menu-item-position' => (int) ( $op['position'] ?? 99 ) ) );
 		return array( 'summary' => array( 'menu' => $slug, 'item' => $id ) );
 	}
+	if ( 'btnlink' === $fn ) {
+		// Skift link på knapper med en bestemt tekst og et bestemt nuværende link i alle publicerede Elementor-sider.
+		global $wpdb;
+		$ids = $wpdb->get_col( "SELECT p.ID FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish'" );
+		$log = array();
+		foreach ( $ids as $pid ) {
+			$raw = (string) get_post_meta( (int) $pid, '_elementor_data', true );
+			$tree = json_decode( $raw, true ); if ( ! is_array( $tree ) ) { continue; }
+			$n = 0;
+			$walk = function ( &$els ) use ( &$walk, &$n, $op ) {
+				foreach ( $els as &$e ) {
+					if ( 'button' === ( $e['widgetType'] ?? '' ) && trim( (string) ( $e['settings']['text'] ?? '' ) ) === $op['text'] && ( $e['settings']['link']['url'] ?? '' ) === $op['from'] ) { $e['settings']['link']['url'] = $op['to']; $n++; }
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
+				}
+			};
+			$walk( $tree );
+			if ( $n ) {
+				if ( ! metadata_exists( 'post', (int) $pid, '_nordic_bk_' . $op['id'] ) ) { add_post_meta( (int) $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) ); }
+				update_post_meta( (int) $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
+				delete_post_meta( (int) $pid, '_elementor_css' );
+				$log[ $pid ] = $n;
+			}
+		}
+		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => $log );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
