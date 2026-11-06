@@ -53,7 +53,7 @@ add_action( 'wp_body_open', function () {
 		array( 'https://nordicspecialhospital.dk', 'Specialklinik', '#C79A5B', false ),
 		array( 'https://nordicreumatologi.dk', 'Reumatologi', '#3F7CC0', false ),
 		array( 'https://nordicosteoporose.dk', 'Osteoporose', '#2F8F83', false ),
-		array( home_url( '/' ), 'DEXA Scan', '#8E7FD6', true ),
+		array( home_url( '/' ), 'DEXA Scan', '#7A68C2', true ),
 	);
 	echo '<div class="ndx-bar"><div class="ndx-bar__in"><a class="ndx-bar__brand" href="https://nordicspecialhospital.dk/#klinikker">Nordic Specialhospital</a><nav class="ndx-bar__nav" aria-label="Klinikker i Nordic Specialhospital">';
 	foreach ( $k as $x ) {
