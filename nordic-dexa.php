@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.13
+ * Version: 1.14
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -45,6 +45,39 @@ add_action( 'template_redirect', function () {
 add_filter( 'rank_math/sitemap/entry', function ( $url, $type, $obj ) {
 	return ( 'post' === $type && isset( $obj->post_name ) && 'privatlivspolitik' === $obj->post_name ) ? false : $url;
 }, 10, 3 );
+
+/* Klinikbjælke øverst som på de øvrige Nordic-sites, i DEXA-sitets farver (mørkere navy over headeren, guldlinje). */
+add_action( 'wp_body_open', function () {
+	if ( is_admin() ) { return; }
+	$k = array(
+		array( 'https://nordicspecialhospital.dk', 'Specialklinik', '#C79A5B', false ),
+		array( 'https://nordicreumatologi.dk', 'Reumatologi', '#3F7CC0', false ),
+		array( 'https://nordicosteoporose.dk', 'Osteoporose', '#2F8F83', false ),
+		array( home_url( '/' ), 'DEXA Scan', '#8E7FD6', true ),
+	);
+	echo '<div class="ndx-bar"><div class="ndx-bar__in"><a class="ndx-bar__brand" href="https://nordicspecialhospital.dk/#klinikker">Nordic Specialhospital</a><nav class="ndx-bar__nav" aria-label="Klinikker i Nordic Specialhospital">';
+	foreach ( $k as $x ) {
+		echo '<a href="' . esc_url( $x[0] ) . '"' . ( $x[3] ? ' class="is-active" aria-current="page" style="--ndx:' . $x[2] . '"' : '' ) . '><i style="background:' . $x[2] . '" aria-hidden="true"></i><span class="ndx-bar__n">Nordic </span>' . esc_html( $x[1] ) . '</a>';
+	}
+	echo '</nav></div></div>' . "\n";
+}, 20 );
+add_action( 'wp_head', function () {
+	echo '<style id="nordic-klinikbjaelke">'
+		. '.ndx-bar{background:#131E33;box-shadow:inset 0 -2px 0 #C79A5B;font-family:"Manrope",sans-serif;position:relative;z-index:20}'
+		. '.ndx-bar__in{max-width:1320px;margin:0 auto;padding:0 0 2px;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-sizing:border-box}'
+		. '.ndx-bar__brand{color:#E9C894!important;font-size:11.5px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;text-decoration:none!important;white-space:nowrap}'
+		. '.ndx-bar__brand:hover,.ndx-bar__brand:focus-visible{color:#fff!important}'
+		. '.ndx-bar__nav{display:flex;align-items:center;gap:28px}'
+		. '.ndx-bar__nav a{display:inline-flex;align-items:center;gap:7px;padding:10px 0 8px;color:rgba(227,234,243,.82)!important;font-size:12.5px;font-weight:500;line-height:1.5;text-decoration:none!important;white-space:nowrap;transition:color .15s}'
+		. '.ndx-bar__nav a:hover,.ndx-bar__nav a:focus-visible{color:#fff!important}'
+		. '.ndx-bar__nav a:focus-visible,.ndx-bar__brand:focus-visible{outline:2px solid #E9C894;outline-offset:2px;border-radius:2px}'
+		. '.ndx-bar__nav a.is-active{color:#fff!important;font-weight:700;box-shadow:inset 0 -2px 0 var(--ndx)}'
+		. '.ndx-bar__nav i{width:6px;height:6px;border-radius:50%;flex:none}'
+		. '@media(max-width:1379px){.ndx-bar__in{padding:0 20px 2px}}'
+		. '@media(max-width:767px){.ndx-bar__in{justify-content:center;padding:0 8px 2px}.ndx-bar__brand,.ndx-bar__n{display:none}.ndx-bar__nav{gap:12px}.ndx-bar__nav a{gap:5px;font-size:11.5px}}'
+		. '@media(max-width:359px){.ndx-bar__nav{gap:8px}.ndx-bar__nav a{font-size:11px}}'
+		. '</style>' . "\n";
+}, 98 );
 
 function nordic_dexa_fix( $html ) {
 	if ( false === stripos( $html, '<html' ) ) { return $html; }
