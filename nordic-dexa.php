@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.14
+ * Version: 1.15
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -57,7 +57,7 @@ add_action( 'wp_body_open', function () {
 	);
 	echo '<div class="ndx-bar"><div class="ndx-bar__in"><a class="ndx-bar__brand" href="https://nordicspecialhospital.dk/#klinikker">Nordic Specialhospital</a><nav class="ndx-bar__nav" aria-label="Klinikker i Nordic Specialhospital">';
 	foreach ( $k as $x ) {
-		echo '<a href="' . esc_url( $x[0] ) . '"' . ( $x[3] ? ' class="is-active" aria-current="page" style="--ndx:' . $x[2] . '"' : '' ) . '><i style="background:' . $x[2] . '" aria-hidden="true"></i><span class="ndx-bar__n">Nordic </span>' . esc_html( $x[1] ) . '</a>';
+		echo '<a href="' . esc_url( $x[0] ) . '"' . ( $x[3] ? ' class="is-active" aria-current="page" style="--ndx:' . $x[2] . '"' : '' ) . '><i style="background:' . $x[2] . '" aria-hidden="true"></i><span><span class="ndx-bar__n">Nordic </span>' . esc_html( $x[1] ) . '</span></a>';
 	}
 	echo '</nav></div></div>' . "\n";
 }, 20 );
