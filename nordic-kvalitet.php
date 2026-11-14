@@ -305,6 +305,10 @@ function nordic_k_redirects() {
 			'/helbredsundersogelse/' => $s . '/helbredsundersogelse/',
 			'/overvaegt-og-hormonsygdomme/' => $s . '/medicinsk-vaegtbehandling/',
 			'/dexa-skanning/' => 'https://nordicdexascan.dk/',
+			// Osteoporose samlet på nordicosteoporose.dk (godkendt af Sheraz 2026-11-15).
+			'/osteoporose/udredning/' => 'https://nordicosteoporose.dk/udredning/',
+			'/osteoporose/behandling/' => 'https://nordicosteoporose.dk/behandling/',
+			'/osteoporose/' => 'https://nordicosteoporose.dk/osteoporose/',
 			'/neurologi/' => '/', '/allergi/' => '/',
 			'/elementskit-content/*' => '/', '/elementor-hf/*' => '/',
 		),
