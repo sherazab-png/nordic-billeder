@@ -882,6 +882,20 @@ function nordic_imp_run( $op, &$st ) {
 		foreach ( (array) $op['ids'] as $pid ) { $p = get_post( (int) $pid ); if ( $p ) { $log[] = $pid . ' ' . $p->post_name . ': ' . $p->post_status . ' -> ' . $op['status']; wp_update_post( array( 'ID' => (int) $pid, 'post_status' => $op['status'] ) ); } }
 		return array( 'summary' => $log );
 	}
+	if ( 'menu_retarget' === $fn ) {
+		// Menupunkter, der peger på siden med slug X, laves om til et link til en anden adresse (titlen bevares).
+		$page = get_page_by_path( $op['slug'] ); if ( ! $page ) { return array( 'error' => 'side ikke fundet' ); }
+		$log = array();
+		foreach ( get_posts( array( 'post_type' => 'nav_menu_item', 'numberposts' => -1, 'post_status' => 'any', 'meta_key' => '_menu_item_object_id', 'meta_value' => $page->ID ) ) as $it ) {
+			if ( 'post_type' !== get_post_meta( $it->ID, '_menu_item_type', true ) ) { continue; }
+			$title = $it->post_title ? $it->post_title : $page->post_title;
+			wp_update_post( array( 'ID' => $it->ID, 'post_title' => $title ) );
+			update_post_meta( $it->ID, '_menu_item_type', 'custom' ); update_post_meta( $it->ID, '_menu_item_object', 'custom' );
+			update_post_meta( $it->ID, '_menu_item_object_id', $it->ID ); update_post_meta( $it->ID, '_menu_item_url', $op['url'] );
+			$log[] = $it->ID . ' "' . $title . '"';
+		}
+		return array( 'summary' => $log );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
