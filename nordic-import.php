@@ -866,6 +866,16 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $log );
 	}
+	if ( 'filerepl' === $fn ) {
+		// Erstat tekst i den fil, der definerer en funktion (fx et kodeudsnit). Backup ved siden af filen.
+		if ( ! function_exists( $op['func'] ) ) { return array( 'error' => 'funktion findes ikke' ); }
+		$rf = new ReflectionFunction( $op['func'] ); $file = $rf->getFileName();
+		if ( 0 !== strpos( realpath( $file ), realpath( WP_CONTENT_DIR ) ) ) { return array( 'error' => 'fil uden for wp-content: ' . $file ); }
+		$c = file_get_contents( $file ); $n = 0;
+		foreach ( (array) ( $op['r'] ?? array() ) as $r ) { $k = substr_count( $c, $r[0] ); if ( $k ) { $c = str_replace( $r[0], $r[1], $c ); $n += $k; } }
+		if ( $n && empty( $op['dry'] ) ) { copy( $file, $file . '.bak-' . gmdate( 'Ymd-His' ) ); file_put_contents( $file, $c ); if ( function_exists( 'opcache_invalidate' ) ) { opcache_invalidate( $file, true ); } }
+		return array( 'summary' => array( 'file' => str_replace( WP_CONTENT_DIR, '', $file ), 'hits' => $n ) );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
