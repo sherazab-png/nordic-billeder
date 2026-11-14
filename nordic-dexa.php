@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.16
+ * Version: 1.17
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -37,13 +37,18 @@ add_action( 'wp_head', function () {
 /* Én fælles privatlivspolitik for alle Nordic-klinikker (ejerens beslutning 2026-10-25). */
 add_action( 'template_redirect', function () {
 	$path = trim( (string) wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ), '/' );
+	// Osteoporose samlet på nordicosteoporose.dk (godkendt 2026-11-15).
+	if ( 'osteoporose-knoglesundhed' === $path && ! is_user_logged_in() ) {
+		wp_redirect( 'https://nordicosteoporose.dk/udredning/', 301, 'Nordic DEXA' );
+		exit;
+	}
 	if ( 'privatlivspolitik' === $path && ! is_user_logged_in() ) {
 		wp_redirect( 'https://nordicspecialhospital.dk/privatlivspolitik/', 301, 'Nordic DEXA' );
 		exit;
 	}
 }, 0 );
 add_filter( 'rank_math/sitemap/entry', function ( $url, $type, $obj ) {
-	return ( 'post' === $type && isset( $obj->post_name ) && 'privatlivspolitik' === $obj->post_name ) ? false : $url;
+	return ( 'post' === $type && isset( $obj->post_name ) && in_array( $obj->post_name, array( 'privatlivspolitik', 'osteoporose-knoglesundhed' ), true ) ) ? false : $url;
 }, 10, 3 );
 
 /* Klinikbjælke øverst som på de øvrige Nordic-sites, i DEXA-sitets farver (mørkere navy over headeren, guldlinje). */
