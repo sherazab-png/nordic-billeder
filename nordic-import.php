@@ -849,6 +849,23 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => 'ok' );
 	}
+	if ( 'metarepl' === $fn ) {
+		// Erstat tekst i et metafelt (også serialiseret) på alle publicerede indlæg: keys, r = [[fra, til], ...].
+		global $wpdb; $log = array();
+		foreach ( (array) $op['keys'] as $key ) {
+			foreach ( $wpdb->get_col( $wpdb->prepare( "SELECT m.post_id FROM $wpdb->postmeta m JOIN $wpdb->posts p ON p.ID=m.post_id AND p.post_status='publish' WHERE m.meta_key=%s", $key ) ) as $pid ) {
+				$v = get_post_meta( (int) $pid, $key, true ); $n = 0;
+				$f = function ( $x ) use ( &$f, $op, &$n ) {
+					if ( is_array( $x ) ) { foreach ( $x as $k => $y ) { $x[ $k ] = $f( $y ); } return $x; }
+					if ( is_string( $x ) ) { foreach ( $op['r'] as $r ) { if ( false !== strpos( $x, $r[0] ) ) { $x = str_replace( $r[0], $r[1], $x ); $n++; } } }
+					return $x;
+				};
+				$nv = $f( $v );
+				if ( $n ) { update_post_meta( (int) $pid, $key, wp_slash( $nv ) ); $log[] = $pid . ' ' . $key . ' x' . $n; }
+			}
+		}
+		return array( 'summary' => $log );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
