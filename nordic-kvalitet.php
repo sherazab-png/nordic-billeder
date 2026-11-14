@@ -431,3 +431,16 @@ add_action( 'init', function () {
 	if ( ! wp_next_scheduled( 'nordic_k_warm_daily' ) ) { wp_schedule_event( time() + 3600, 'daily', 'nordic_k_warm_daily' ); }
 } );
 add_action( 'nordic_k_warm_daily', 'nordic_k_warm' );
+
+/* Specialklinik, forsiden: prisboksen på hero-billedet er ét link til nordicdexascan.dk (godkendt 2026-11-15). Hover og tastaturfokus. */
+add_action( 'wp_head', function () {
+	if ( ! is_front_page() || false === strpos( home_url(), 'nordicspecialhospital.dk' ) ) { return; }
+	echo '<style id="nordic-dexa-boks">'
+		. 'a.elementor-element-696c9f81{text-decoration:none;transition:transform .18s ease,box-shadow .18s ease}'
+		. 'a.elementor-element-696c9f81:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(16,42,76,.30)}'
+		. 'a.elementor-element-696c9f81:focus-visible{outline:3px solid #C79A5B;outline-offset:3px}'
+		. 'a.elementor-element-696c9f81 p:last-of-type{margin-top:8px;font-weight:600;color:#102A4C}'
+		. 'a.elementor-element-696c9f81:hover p:last-of-type{text-decoration:underline;text-underline-offset:3px}'
+		. '@media (prefers-reduced-motion:reduce){a.elementor-element-696c9f81,a.elementor-element-696c9f81:hover{transition:none;transform:none}}'
+		. '</style>' . "\n";
+}, 99 );
