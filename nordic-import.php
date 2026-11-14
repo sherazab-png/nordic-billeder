@@ -876,6 +876,12 @@ function nordic_imp_run( $op, &$st ) {
 		if ( $n && empty( $op['dry'] ) ) { copy( $file, $file . '.bak-' . gmdate( 'Ymd-His' ) ); file_put_contents( $file, $c ); if ( function_exists( 'opcache_invalidate' ) ) { opcache_invalidate( $file, true ); } }
 		return array( 'summary' => array( 'file' => str_replace( WP_CONTENT_DIR, '', $file ), 'hits' => $n ) );
 	}
+	if ( 'poststatus' === $fn ) {
+		// Skift status på sider (fx publish -> draft). Gammel status logges, så det kan rulles tilbage.
+		$log = array();
+		foreach ( (array) $op['ids'] as $pid ) { $p = get_post( (int) $pid ); if ( $p ) { $log[] = $pid . ' ' . $p->post_name . ': ' . $p->post_status . ' -> ' . $op['status']; wp_update_post( array( 'ID' => (int) $pid, 'post_status' => $op['status'] ) ); } }
+		return array( 'summary' => $log );
+	}
 	if ( 'grep' === $fn ) {
 		// Find en tekststreng i indlæg, metadata og options (kun læsning).
 		global $wpdb;
