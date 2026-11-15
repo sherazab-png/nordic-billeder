@@ -680,6 +680,17 @@ function nordic_imp_run( $op, &$st ) {
 		if ( 'eldrop' === $fn && class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => array( 'found' => $found, 'changed' => $log ) );
 	}
+	if ( 'elget' === $fn ) {
+		// Rå indstillinger for udvalgte elementer (kun læsning): ids = [[post, id], ...].
+		$o = array();
+		foreach ( (array) $op['ids'] as $x ) {
+			$tree = json_decode( (string) get_post_meta( (int) $x[0], '_elementor_data', true ), true );
+			$f = function ( $els ) use ( &$f, $x ) { foreach ( (array) $els as $e ) { if ( $e['id'] === $x[1] ) { return $e; } if ( ! empty( $e['elements'] ) && ( $r = $f( $e['elements'] ) ) ) { return $r; } } return null; };
+			$e = $f( $tree );
+			$o[ $x[0] . '/' . $x[1] ] = $e ? array( 'type' => $e['widgetType'] ?? $e['elType'], 'settings' => $e['settings'], 'kids' => array_map( function ( $k ) { return $k['id'] . ' ' . ( $k['widgetType'] ?? $k['elType'] ); }, (array) ( $e['elements'] ?? array() ) ) ) : null;
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'eltree' === $fn ) {
 		// Kompakt elementtræ med type, tekst og links for de angivne indlæg (kun læsning).
 		$o = array();
