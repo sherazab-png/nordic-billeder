@@ -193,17 +193,17 @@ if ( ! function_exists( 'nordic_samtykke_id' ) ) {
 	add_action( 'wp_head', function () {
 		if ( is_admin() || is_user_logged_in() || ! nordic_samtykke_id() ) { return; }
 		echo '<style id="nordic-samtykke-css">'
-			. '.nsk{position:fixed;left:16px;right:16px;bottom:16px;z-index:99999;max-width:720px;margin:0 auto;background:#fff;color:#102A4C;border-radius:14px;box-shadow:0 12px 40px rgba(16,42,76,.25);padding:18px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;font:400 14px/1.5 "Manrope",system-ui,sans-serif}'
+			. '.nsk{position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#102A4C;color:#fff;box-shadow:0 -4px 16px rgba(16,42,76,.18);padding:8px 16px;display:flex;gap:8px 16px;align-items:center;justify-content:center;flex-wrap:wrap;font:400 13px/1.4 "Manrope",system-ui,sans-serif}'
 			. '.nsk[hidden]{display:none}'
-			. '.nsk p{margin:0;flex:1 1 320px}'
-			. '.nsk a{color:#102A4C;text-decoration:underline;text-underline-offset:2px}'
-			. '.nsk__b{display:flex;gap:10px;flex-wrap:wrap}'
-			. '.nsk button{font:600 14px/1 "Manrope",system-ui,sans-serif;padding:12px 18px;border-radius:999px;border:2px solid #102A4C;cursor:pointer;min-height:44px}'
-			. '.nsk__ja{background:#102A4C;color:#fff}.nsk__nej{background:#fff;color:#102A4C}'
-			. '.nsk button:hover{filter:brightness(1.12)}'
-			. '.nsk button:focus-visible,.nsk a:focus-visible,.nsk-indst:focus-visible{outline:3px solid #C79A5B;outline-offset:2px}'
+			. '.nsk p{margin:0}'
+			. '.nsk a{color:#fff;text-decoration:underline;text-underline-offset:2px}'
+			. '.nsk__b{display:flex;gap:8px}'
+			. '.nsk button{font:600 13px/1 "Manrope",system-ui,sans-serif;padding:8px 14px;border-radius:999px;border:1px solid #fff;cursor:pointer;min-height:36px}'
+			. '.nsk__ja{background:#fff;color:#102A4C}.nsk__nej{background:transparent;color:#fff}'
+			. '.nsk button:hover{filter:brightness(1.1)}'
+			. '.nsk button:focus-visible,.nsk a:focus-visible,.nsk-indst:focus-visible{outline:2px solid #C79A5B;outline-offset:2px}'
 			. '.nsk-indst{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}'
-			. '@media(max-width:600px){.nsk{left:8px;right:8px;bottom:8px;padding:16px}.nsk__b{width:100%}.nsk button{flex:1}}'
+			. '@media(max-width:600px){.nsk{padding:8px 12px;font-size:12px}.nsk p{text-align:center}.nsk button{min-height:40px;padding:8px 12px}}'
 			. '</style>' . "\n";
 	}, 98 );
 	add_action( 'wp_footer', function () {
@@ -212,7 +212,7 @@ if ( ! function_exists( 'nordic_samtykke_id' ) ) {
 		if ( ! $id ) { return; }
 		$cookies = esc_url( home_url( '/cookies/' ) );
 		echo '<div class="nsk" id="nsk" role="dialog" aria-live="polite" aria-label="Cookies" hidden>'
-			. '<p>Vi vil gerne bruge cookies til statistik (Google Analytics), så vi kan se, hvordan sitet bruges, og gøre det bedre. Det sker kun, hvis du siger ja. <a href="' . $cookies . '">Læs mere om cookies</a></p>'
+			. '<p>Vi bruger kun statistik-cookies (Google Analytics), hvis du siger ja. <a href="' . $cookies . '">Læs mere</a></p>'
 			. '<div class="nsk__b"><button type="button" class="nsk__nej" data-nsk="noedvendige">Kun nødvendige</button><button type="button" class="nsk__ja" data-nsk="statistik">Accepter statistik</button></div>'
 			. '</div>' . "\n";
 		echo '<script id="nordic-samtykke-js">(function(){'
