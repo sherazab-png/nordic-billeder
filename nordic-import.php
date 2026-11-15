@@ -633,6 +633,53 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $log );
 	}
+	if ( 'elfind' === $fn || 'eldrop' === $fn ) {
+		// elfind: find elementer, hvis indstillinger indeholder en af tekststrengene i q (kun læsning).
+		// eldrop: fjern elementer: drop = [[post, id], ...] og/eller has = [tekst, ...] (element hvis direkte børn har præcis disse tekster). Backup i _nordic_bk_<op-id>. dry = kun vis.
+		global $wpdb;
+		$posts = ! empty( $op['posts'] ) ? array_map( 'intval', (array) $op['posts'] ) : array_map( 'intval', $wpdb->get_col( "SELECT p.ID FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish' AND p.post_type IN ('page','elementor-hf','elementor_library','post')" ) );
+		$txtof = function ( $e ) {
+			$out = array();
+			$sx = $e['settings'] ?? array(); array_walk_recursive( $sx, function ( $v, $k ) use ( &$out ) { if ( is_string( $v ) && ! in_array( $k, array( '$$type' ), true ) && '' !== trim( $v ) ) { $out[] = $v; } } );
+			return trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( implode( ' ', $out ) ) ) );
+		};
+		$found = array(); $log = array();
+		foreach ( $posts as $pid ) {
+			$raw = (string) get_post_meta( $pid, '_elementor_data', true );
+			$tree = json_decode( $raw, true );
+			if ( ! is_array( $tree ) ) { continue; }
+			$dropids = array();
+			foreach ( (array) ( $op['drop'] ?? array() ) as $d ) { if ( (int) $d[0] === $pid ) { $dropids[] = $d[1]; } }
+			$changed = 0;
+			$walk = function ( &$els, $parent ) use ( &$walk, &$found, &$dropids, &$changed, $op, $pid, $txtof, $fn ) {
+				foreach ( $els as $i => &$e ) {
+					if ( 'elfind' === $fn ) {
+						$js = wp_json_encode( $e['settings'] ?? array(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+						foreach ( (array) $op['q'] as $q ) { if ( false !== strpos( $js, $q ) ) { $found[] = array( $pid, $e['id'], $e['widgetType'] ?? $e['elType'], $parent, mb_substr( $txtof( $e ), 0, 60 ) ); break; } }
+					} else {
+						$hit = in_array( $e['id'], $dropids, true );
+						if ( ! $hit && ! empty( $op['has'] ) && ! empty( $e['elements'] ) ) {
+							$kids = array_map( $txtof, $e['elements'] );
+							$hit = count( array_intersect( (array) $op['has'], $kids ) ) === count( (array) $op['has'] ) && count( $e['elements'] ) === count( (array) $op['has'] );
+						}
+						if ( $hit ) { $found[] = array( $pid, $e['id'] ); unset( $els[ $i ] ); $changed++; continue; }
+					}
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'], $e['id'] ); }
+				}
+				$els = array_values( $els );
+			};
+			$walk( $tree, '' );
+			if ( 'eldrop' === $fn && $changed && empty( $op['dry'] ) ) {
+				if ( ! metadata_exists( 'post', $pid, '_nordic_bk_' . $op['id'] ) ) { add_post_meta( $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) ); }
+				update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) );
+				delete_post_meta( $pid, '_elementor_css' );
+				delete_post_meta( $pid, '_elementor_element_cache' );
+				$log[] = $pid . ':' . $changed;
+			}
+		}
+		if ( 'eldrop' === $fn && class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
+		return array( 'summary' => array( 'found' => $found, 'changed' => $log ) );
+	}
 	if ( 'eltree' === $fn ) {
 		// Kompakt elementtræ med type, tekst og links for de angivne indlæg (kun læsning).
 		$o = array();
