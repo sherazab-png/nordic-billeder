@@ -660,7 +660,7 @@ function nordic_imp_run( $op, &$st ) {
 						$hit = in_array( $e['id'], $dropids, true );
 						if ( ! $hit && ! empty( $op['has'] ) && ! empty( $e['elements'] ) ) {
 							$kids = array_map( $txtof, $e['elements'] );
-							$hit = count( array_intersect( (array) $op['has'], $kids ) ) === count( (array) $op['has'] ) && count( $e['elements'] ) === count( (array) $op['has'] );
+							$ok = 0; foreach ( (array) $op['has'] as $j => $h ) { if ( isset( $kids[ $j ] ) && false !== strpos( $kids[ $j ], $h ) ) { $ok++; } } $hit = $ok === count( (array) $op['has'] ) && count( $e['elements'] ) === count( (array) $op['has'] );
 						}
 						if ( $hit ) { $found[] = array( $pid, $e['id'] ); unset( $els[ $i ] ); $changed++; continue; }
 					}
@@ -724,6 +724,7 @@ function nordic_imp_run( $op, &$st ) {
 			return $e;
 		};
 		$copy = $re( $src );
+		if ( ! empty( $op['repl'] ) ) { $rw = function ( &$e ) use ( &$rw, $op ) { if ( ! empty( $e['settings'] ) && is_array( $e['settings'] ) ) { array_walk_recursive( $e['settings'], function ( &$v ) use ( $op ) { if ( is_string( $v ) ) { foreach ( $op['repl'] as $p ) { $v = str_replace( $p[0], $p[1], $v ); } } } ); } foreach ( $e['elements'] as &$k ) { $rw( $k ); } }; $rw( $copy ); }
 		$done = false;
 		$ins = function ( &$els ) use ( &$ins, $op, $copy, &$done ) {
 			foreach ( $els as $i => $e ) {
