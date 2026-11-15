@@ -436,7 +436,7 @@ add_action( 'nordic_k_warm_daily', 'nordic_k_warm' );
 add_action( 'wp_head', function () {
 	if ( ! is_front_page() || false === strpos( home_url(), 'nordicspecialhospital.dk' ) ) { return; }
 	echo '<style id="nordic-dexa-boks">'
-		. 'a.elementor-element-696c9f81{text-decoration:none;width:auto;max-width:none;transition:transform .18s ease,box-shadow .18s ease}'
+		. '.elementor a.elementor-element-696c9f81{text-decoration:none;max-width:none;transition:transform .18s ease,box-shadow .18s ease}'
 		. 'a.elementor-element-696c9f81 p:nth-of-type(2){white-space:nowrap}'
 		. 'a.elementor-element-696c9f81:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(16,42,76,.30)}'
 		. 'a.elementor-element-696c9f81:focus-visible{outline:3px solid #C79A5B;outline-offset:3px}'
