@@ -279,6 +279,22 @@ function nordic_k_404_page() {
 	if ( ! $p ) { $p = get_page_by_path( 'siden-findes-ikke' ); }
 	return ( $p && 'publish' === $p->post_status ) ? $p : null;
 }
+/* Gamle spam-adresser fra før relanceringen: svar 410 (slettet), så Google glemmer dem (godkendt af Sheraz 2026-11-15). */
+function nordic_k_gone() {
+	$h = preg_replace( '/^(www\.|dev\.)/', '', strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ) );
+	$gone = array(
+		'nordicreumatologi.dk' => array( '/swot-analysis-examples/', '/social-media-trends/', '/schema-markup-website-structure/*', '/tag/*', '/category/*', '/author/*' ),
+	);
+	$p = '/' . trim( strtolower( (string) wp_parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH ) ), '/' ) . '/'; // phpcs:ignore
+	foreach ( $gone[ $h ] ?? array() as $g ) {
+		if ( ( '/*' === substr( $g, -2 ) ) ? 0 === strpos( $p, substr( $g, 0, -1 ) ) : $p === $g ) { return true; }
+	}
+	return false;
+}
+// Forfatterarkiver bruges ikke: behandles som ikke-fundet (og får 410 via listen ovenfor).
+add_action( 'template_redirect', function () {
+	if ( is_author() && nordic_k_gone() ) { global $wp_query; $wp_query->set_404(); }
+}, -1 );
 /* 301-omdirigeringer fra de gamle sites' adresser (godkendt af Sheraz 2026-11-04). Gælder kun adresser, der ellers ville give 404. */
 function nordic_k_redirects() {
 	$s = 'https://nordicspecialhospital.dk';
@@ -311,6 +327,8 @@ function nordic_k_redirects() {
 			'/osteoporose/' => 'https://nordicosteoporose.dk/osteoporose/',
 			'/neurologi/' => '/', '/allergi/' => '/',
 			'/elementskit-content/*' => '/', '/elementor-hf/*' => '/',
+			// Sider fjernet fra sitet (godkendt af Sheraz 2026-11-15).
+			'/sygdomme/hypermobilitet/' => '/sygdomme/', '/sygdomme/kroniske-smerter-og-fibromyalgi/' => '/sygdomme/',
 		),
 	);
 	$h = preg_replace( '/^(www\.|dev\.)/', '', strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ) );
@@ -342,7 +360,7 @@ add_action( 'template_redirect', function () {
 	$GLOBALS['nordic_k_is404'] = true;
 	remove_action( 'wp_head', 'rel_canonical' );
 	remove_action( 'wp_head', 'wp_shortlink_wp_head' );
-	status_header( 404 );
+	status_header( nordic_k_gone() ? 410 : 404 );
 	nocache_headers();
 }, 1 );
 add_filter( 'pre_get_document_title', function ( $t ) {
