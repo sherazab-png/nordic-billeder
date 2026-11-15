@@ -329,6 +329,8 @@ function nordic_k_redirects() {
 			'/elementskit-content/*' => '/', '/elementor-hf/*' => '/',
 			// Sider fjernet fra sitet (godkendt af Sheraz 2026-11-15).
 			'/sygdomme/hypermobilitet/' => '/sygdomme/', '/sygdomme/kroniske-smerter-og-fibromyalgi/' => '/sygdomme/',
+			// Speciallægeerklæring udstedes af Nordic Specialklinik (godkendt af Sheraz 2026-11-15).
+			'/undersoegelser/speciallaegeerklaering/' => $s . '/laegeattester/',
 		),
 	);
 	$h = preg_replace( '/^(www\.|dev\.)/', '', strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ) );
