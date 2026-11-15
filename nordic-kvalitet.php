@@ -489,7 +489,7 @@ if ( ! function_exists( 'nordic_samtykke_id' ) ) {
 			. 'var ID=' . wp_json_encode( $id ) . ',K="nordic_samtykke",box=document.getElementById("nsk"),loaded=false;'
 			. 'function get(){var m=document.cookie.match(/(?:^|; )nordic_samtykke=([^;]*)/);return m?m[1]:"";}'
 			. 'function set(v){document.cookie=K+"="+v+"; Max-Age="+(180*86400)+"; Path=/; SameSite=Lax; Secure";}'
-			. 'function ga(){if(loaded)return;loaded=true;window.dataLayer=window.dataLayer||[];window.gtag=function(){dataLayer.push(arguments);};gtag("js",new Date());gtag("config",ID);if(ID==="G-PREVIEW00")return;var s=document.createElement("script");s.async=true;s.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(ID);document.head.appendChild(s);}'
+			. 'function ga(){if(loaded)return;loaded=true;window.dataLayer=window.dataLayer||[];window.gtag=function(){dataLayer.push(arguments);};gtag("js",new Date());gtag("set","linker",{domains:["nordicspecialhospital.dk","nordicreumatologi.dk","nordicosteoporose.dk","nordicdexascan.dk"]});gtag("config",ID);if(ID==="G-PREVIEW00")return;var s=document.createElement("script");s.async=true;s.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(ID);document.head.appendChild(s);}'
 			. 'function slet(){document.cookie.split("; ").forEach(function(c){var n=c.split("=")[0];if(/^_ga/.test(n)){var h=location.hostname.replace(/^www\./,"");["",h,"."+h].forEach(function(d){document.cookie=n+"=; Max-Age=0; Path=/"+(d?"; Domain="+d:"");});}});}'
 			. 'function vaelg(v){set(v);box.hidden=true;if(v==="statistik"){ga();}else{if(loaded){location.reload();}slet();}}'
 			. 'box.addEventListener("click",function(e){var b=e.target.closest("[data-nsk]");if(b)vaelg(b.getAttribute("data-nsk"));});'
