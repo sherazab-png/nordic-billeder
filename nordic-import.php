@@ -459,6 +459,29 @@ function nordic_imp_run( $op, &$st ) {
 		foreach ( $op['options'] as $k => $v ) { update_option( $k, nordic_imp_subst( $v, $st['vars'] ) ); }
 		return array( 'summary' => array_keys( $op['options'] ) );
 	}
+	if ( 'ffopt' === $fn ) {
+		// Fjern svarmuligheder i en radio/select i Fluent Forms: field = feltnavn, drop = regex på label. dry = kun vis. Backup i option _nordic_bk_<op-id>.
+		global $wpdb; $t = $wpdb->prefix . 'fluentform_forms'; $o = array();
+		foreach ( $wpdb->get_results( "SELECT id, title, form_fields FROM $t", ARRAY_A ) as $r ) {
+			$ff = json_decode( $r['form_fields'], true ); if ( ! is_array( $ff ) ) { continue; } $hit = false;
+			$walk = function ( &$fields ) use ( &$walk, $op, &$hit, &$o, $r ) {
+				foreach ( $fields as &$fl ) {
+					if ( ( $fl['attributes']['name'] ?? '' ) === $op['field'] && isset( $fl['settings']['advanced_options'] ) ) {
+						$before = array_column( $fl['settings']['advanced_options'], 'label' );
+						$fl['settings']['advanced_options'] = array_values( array_filter( $fl['settings']['advanced_options'], function ( $a ) use ( $op ) { return ! preg_match( $op['drop'], $a['label'] ); } ) );
+						$o[] = array( $r['id'], $r['title'], $before, array_column( $fl['settings']['advanced_options'], 'label' ) ); $hit = true;
+					}
+					if ( ! empty( $fl['columns'] ) ) { foreach ( $fl['columns'] as &$c ) { if ( ! empty( $c['fields'] ) ) { $walk( $c['fields'] ); } } }
+				}
+			};
+			$walk( $ff['fields'] );
+			if ( $hit && empty( $op['dry'] ) ) {
+				add_option( '_nordic_bk_' . $op['id'] . '_' . $r['id'], $r['form_fields'], '', 'no' );
+				$wpdb->update( $t, array( 'form_fields' => wp_json_encode( $ff ), 'updated_at' => current_time( 'mysql' ) ), array( 'id' => $r['id'] ) );
+			}
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'fluentform' === $fn ) {
 		global $wpdb;
 		$t = $wpdb->prefix . 'fluentform_forms';
