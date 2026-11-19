@@ -2,9 +2,12 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.18
+ * Version: 1.19
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/* Testside til online booking (kun synlig for indloggede redaktører). */
+require_once __DIR__ . '/booking-demo.php';
 
 /* Hero-billedet på forsiden er en CSS-baggrund, som browseren først finder sent. Forudindlæs det. */
 add_action( 'wp_head', function () {
