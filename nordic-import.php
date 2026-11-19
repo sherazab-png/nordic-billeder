@@ -982,6 +982,16 @@ function nordic_imp_run( $op, &$st ) {
 		$o['mappings'] = $s['mappings'] ?? null; $o['misc'] = array_intersect_key( (array) ( $s['misc'] ?? array() ), array_flip( array( 'default_connection', 'fallback_connection' ) ) );
 		return array( 'summary' => $o );
 	}
+	if ( 'pgrep' === $fn ) {
+		// Kun læsning: find tekst i et plugins PHP-filer (linjer med kontekst).
+		$dir = WP_PLUGIN_DIR . '/' . sanitize_key( $op['plugin'] ); $o = array();
+		$it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $dir, FilesystemIterator::SKIP_DOTS ) );
+		foreach ( $it as $f ) {
+			if ( 'php' !== $f->getExtension() || false !== strpos( $f->getPathname(), '/vendor/' ) ) { continue; }
+			foreach ( (array) file( $f->getPathname() ) as $n => $line ) { if ( preg_match( '/' . $op['re'] . '/', $line ) ) { $o[] = substr( $f->getPathname(), strlen( $dir ) ) . ':' . ( $n + 1 ) . ': ' . trim( substr( $line, 0, 220 ) ); if ( count( $o ) > 60 ) { break 2; } } }
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
