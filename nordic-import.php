@@ -815,6 +815,66 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'devclone' === $fn ) {
+		// Kopiér livesitet til en lukket testkopi: filer (genoptageligt), database med nyt præfiks i samme database, wp-config og testlås.
+		global $wpdb; @set_time_limit( 120 );
+		$dst = $op['dst']; $np = $op['prefix']; $start = microtime( true );
+		if ( 0 !== strpos( $dst, '/home/' . $op['user'] . '/domains/dev.' ) || ! is_dir( $dst ) ) { return array( 'error' => 'ugyldig destination' ); }
+		if ( $np === $wpdb->prefix || ! preg_match( '/^[a-z]{2,4}_$/', $np ) ) { return array( 'error' => 'ugyldigt praefiks' ); }
+		$src = untrailingslashit( ABSPATH );
+		if ( 'files' === $op['phase'] ) {
+			$skip = '#^/wp-content/(cache|litespeed|ai1wm-backups|wpvivid|wpvividbackups|upgrade|uploads/wpvivid|backup)#';
+			$n = 0; $bytes = 0; $done = true;
+			$it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $src, FilesystemIterator::SKIP_DOTS ), RecursiveIteratorIterator::SELF_FIRST );
+			foreach ( $it as $f ) {
+				$rel = substr( $f->getPathname(), strlen( $src ) );
+				if ( preg_match( $skip, $rel ) || '/wp-config.php' === $rel ) { continue; }
+				$t = $dst . $rel;
+				if ( $f->isDir() ) { if ( ! is_dir( $t ) ) { mkdir( $t, 0755, true ); } continue; }
+				if ( $f->isLink() ) { continue; }
+				if ( file_exists( $t ) && filesize( $t ) === $f->getSize() && filemtime( $t ) >= $f->getMTime() ) { continue; }
+				if ( microtime( true ) - $start > 90 ) { $done = false; break; }
+				copy( $f->getPathname(), $t ); $n++; $bytes += $f->getSize();
+			}
+			return array( 'summary' => array( 'copied' => $n, 'mb' => round( $bytes / 1048576, 1 ), 'done' => $done ) );
+		}
+		if ( 'db' === $op['phase'] ) {
+			$tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix ) . '%' ) );
+			$o = array();
+			foreach ( $tables as $t ) {
+				$nt = $np . substr( $t, strlen( $wpdb->prefix ) );
+				$wpdb->query( "DROP TABLE IF EXISTS `$nt`" );
+				$wpdb->query( "CREATE TABLE `$nt` LIKE `$t`" );
+				$wpdb->query( "INSERT INTO `$nt` SELECT * FROM `$t`" );
+				$o[] = $nt . ':' . $wpdb->get_var( "SELECT COUNT(*) FROM `$nt`" );
+			}
+			$wpdb->query( $wpdb->prepare( "UPDATE `{$np}options` SET option_name=%s WHERE option_name=%s", $np . 'user_roles', $wpdb->prefix . 'user_roles' ) );
+			$wpdb->query( $wpdb->prepare( "UPDATE `{$np}usermeta` SET meta_key=CONCAT(%s, SUBSTRING(meta_key, %d)) WHERE meta_key LIKE %s", $np, strlen( $wpdb->prefix ) + 1, $wpdb->esc_like( $wpdb->prefix ) . '%' ) );
+			$wpdb->query( "UPDATE `{$np}options` SET option_value='0' WHERE option_name='blog_public'" );
+			$wpdb->query( "DELETE FROM `{$np}options` WHERE option_name IN ('nordic_import_state')" );
+			return array( 'summary' => array( 'tables' => $o ) );
+		}
+		if ( 'sr' === $op['phase'] ) {
+			$old = $wpdb->prefix; $wpdb->set_prefix( $np );
+			$r = nordic_imp_sr( $op['from'], $op['to'], false );
+			$wpdb->set_prefix( $old );
+			return array( 'summary' => $r );
+		}
+		if ( 'config' === $op['phase'] ) {
+			$c = file_get_contents( ABSPATH . 'wp-config.php' );
+			$c = preg_replace( '/\$table_prefix\s*=\s*[\'"][^\'"]+[\'"]\s*;/', '$table_prefix = \'' . $np . '\';', $c, 1, $cnt );
+			if ( 1 !== $cnt ) { return array( 'error' => 'table_prefix ikke fundet' ); }
+			$add = "define( 'WP_HOME', '" . esc_url_raw( $op['to'] ) . "' );\ndefine( 'WP_SITEURL', '" . esc_url_raw( $op['to'] ) . "' );\ndefine( 'WP_ENVIRONMENT_TYPE', 'staging' );\n";
+			$c = preg_replace( '/<\?php\s*/', "<?php\n" . $add, $c, 1 );
+			file_put_contents( $dst . '/wp-config.php', $c );
+			@chmod( $dst . '/wp-config.php', 0600 );
+			if ( ! is_dir( $dst . '/wp-content/mu-plugins' ) ) { mkdir( $dst . '/wp-content/mu-plugins', 0755, true ); }
+			copy( __DIR__ . '/dev/nordic-dev-laas.php', $dst . '/wp-content/mu-plugins/nordic-dev-laas.php' );
+			foreach ( array( 'default.php', 'index2.php' ) as $junk ) { if ( file_exists( $dst . '/' . $junk ) && ! file_exists( $src . '/' . $junk ) ) { @unlink( $dst . '/' . $junk ); } }
+			return array( 'summary' => array( 'config' => 'ok', 'mu' => file_exists( $dst . '/wp-content/mu-plugins/nordic-dev-laas.php' ) ) );
+		}
+		return array( 'error' => 'ukendt fase' );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
