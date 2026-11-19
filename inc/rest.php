@@ -11,6 +11,7 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( $ns, '/stripe', array( 'methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'nb_rest_webhook' ) );
 	if ( nb_mock() ) {
 		register_rest_route( $ns, '/mock/checkout', array( 'methods' => 'GET', 'permission_callback' => '__return_true', 'callback' => 'nb_rest_mock_page' ) );
+		register_rest_route( $ns, '/mock/tool', array( 'methods' => 'POST', 'permission_callback' => 'nb_mock_tool_ok', 'callback' => 'nb_rest_mock_tool' ) );
 		register_rest_route( $ns, '/mock/act', array( 'methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'nb_rest_mock_act' ) );
 	}
 } );
@@ -143,4 +144,35 @@ function nb_rest_mock_act( WP_REST_Request $r ) {
 		if ( 'pay_dup' === $act ) { nb_mock_emit( 'checkout.session.completed', $paid, $evid ); }
 	}
 	wp_redirect( $cs['success_url'] ); exit;
+}
+
+/* Testværktøj (kun testtilstand og kun med testmiljøets adgangskode-cookie). */
+function nb_mock_tool_ok() {
+	return nb_mock() && defined( 'NORDIC_DEV_PASS' ) && NORDIC_DEV_PASS && isset( $_COOKIE['nordic_dev'] ) && hash_equals( hash_hmac( 'sha256', 'ok', NORDIC_DEV_PASS ), (string) $_COOKIE['nordic_dev'] );
+}
+function nb_rest_mock_tool( WP_REST_Request $r ) {
+	global $wpdb;
+	$p = (array) $r->get_json_params(); $act = (string) ( $p['act'] ?? '' );
+	if ( 'age' === $act ) { return array( 'n' => $wpdb->query( 'UPDATE ' . nb_t( 'slots' ) . ' SET held_until=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 HOUR) WHERE held_until IS NOT NULL' ) ); }
+	if ( 'cron' === $act ) { nb_cleanup_holds(); nb_purge(); return array( 'ok' => 1 ); }
+	if ( 'replay' === $act ) { $l = get_option( 'nb_mock_last' ); return $l ? nb_webhook_process( $l['payload'], $l['sig'] ) : array(); }
+	if ( 'badsig' === $act ) { $l = get_option( 'nb_mock_last' ); return $l ? nb_webhook_process( $l['payload'], 't=' . time() . ',v1=' . str_repeat( 'a', 64 ) ) : array(); }
+	if ( 'oldsig' === $act ) { $l = get_option( 'nb_mock_last' ); if ( ! $l ) { return array(); } $t = time() - 3600; return nb_webhook_process( $l['payload'], 't=' . $t . ',v1=' . hash_hmac( 'sha256', $t . '.' . $l['payload'], nb_whsec() ) ); }
+	if ( 'mailfail' === $act ) { update_option( 'nordic_dev_mail_fail', empty( $p['on'] ) ? 0 : 1 ); return array( 'mailfail' => (int) get_option( 'nordic_dev_mail_fail' ) ); }
+	if ( 'mails' === $act ) { return array_map( function ( $m ) { return array( 'to' => $m['to'], 's' => $m['subject'], 'fail' => $m['fail'], 'body' => mb_substr( $m['body'], 0, 600 ) ); }, array_slice( (array) get_option( 'nordic_dev_mail', array() ), 0, (int) ( $p['n'] ?? 10 ) ) ); }
+	if ( 'state' === $act ) {
+		$b = nb_get( 'ref', (string) ( $p['ref'] ?? '' ) );
+		if ( ! $b ) { return array(); }
+		$slot = $wpdb->get_row( $wpdb->prepare( 'SELECT booking_id, held_until FROM ' . nb_t( 'slots' ) . ' WHERE id=%d', $b->slot_id ), ARRAY_A );
+		$v = nb_decrypt( $b->visit );
+		return array( 'status' => $b->status, 'refunded' => (int) $b->refunded, 'mail' => $b->mail_state, 'pi' => (bool) $b->pi_id, 'slot' => $slot, 'visit_encrypted' => 0 === strpos( (string) $b->visit, 'v1:' ), 'visit_readable' => is_array( $v ), 'log' => $wpdb->get_col( $wpdb->prepare( 'SELECT CONCAT(action, " ", detail) FROM ' . nb_t( 'log' ) . ' WHERE booking_id=%d ORDER BY id', $b->id ) ) );
+	}
+	if ( 'refs' === $act ) { return $wpdb->get_results( 'SELECT ref, status, starts_utc FROM ' . nb_t( 'bookings' ) . ' ORDER BY id DESC LIMIT 10', ARRAY_A ); }
+	if ( in_array( $act, array( 'approve', 'reject', 'cancel', 'complete', 'resend', 'retry_refund' ), true ) ) {
+		$b = nb_get( 'ref', (string) ( $p['ref'] ?? '' ) );
+		if ( ! $b ) { return array( 'msg' => 'ukendt' ); }
+		wp_set_current_user( 0 );
+		return array( 'msg' => nb_do_action( $b, $act, isset( $p['amount'] ) ? (int) $p['amount'] : null ) );
+	}
+	return array( 'msg' => 'ukendt' );
 }

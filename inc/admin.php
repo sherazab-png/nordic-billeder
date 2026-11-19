@@ -28,7 +28,16 @@ add_action( 'admin_post_nb_act', function () {
 	$id = (int) ( $_POST['b'] ?? 0 );
 	check_admin_referer( 'nb_act_' . $id );
 	$b = nb_get( 'id', $id ); if ( ! $b ) { wp_die( 'Ukendt booking' ); }
-	$act = sanitize_key( $_POST['act'] ?? '' ); $msg = '';
+	$act = sanitize_key( $_POST['act'] ?? '' );
+	$amt = isset( $_POST['amount'] ) && '' !== $_POST['amount'] ? (int) round( (float) str_replace( ',', '.', (string) $_POST['amount'] ) * 100 ) : null;
+	$msg = nb_do_action( $b, $act, $amt );
+	wp_safe_redirect( add_query_arg( array( 'page' => 'nb-bookings', 'b' => $id, 'msg' => rawurlencode( $msg ) ), admin_url( 'admin.php' ) ) ); exit;
+} );
+
+
+/* Fælles handlinger (bruges af admin og af testværktøjet). */
+function nb_do_action( $b, $act, $amt = null ) {
+	$msg = ''; $id = (int) $b->id;
 	if ( 'approve' === $act ) {
 		$nb = nb_transition( $b, array( 'paid' ), 'approved', array( 'decided_at' => nb_now(), 'decided_by' => get_current_user_id() ) );
 		$msg = $nb ? ( nb_mail_approved( $nb ) ? 'Godkendt, og bekræftelse sendt.' : 'Godkendt, men e-mailen fejlede.' ) : 'Kunne ikke godkende (status er ændret).';
@@ -41,7 +50,6 @@ add_action( 'admin_post_nb_act', function () {
 			$msg = $ok ? ( nb_mail_rejected( nb_get( 'id', $id ) ) ? 'Afvist, refunderet og patienten informeret.' : 'Afvist og refunderet, men e-mailen fejlede.' ) : 'Afvist, men refusionen fejlede. Se loggen og refunder i Stripe.';
 		} else { $msg = 'Kunne ikke afvise (status er ændret).'; }
 	} elseif ( 'cancel' === $act ) {
-		$amt = isset( $_POST['amount'] ) && '' !== $_POST['amount'] ? (int) round( (float) str_replace( ',', '.', (string) $_POST['amount'] ) * 100 ) : null;
 		$nb = nb_transition( $b, array( 'paid', 'approved' ), 'cancelled', array( 'decided_at' => nb_now(), 'decided_by' => get_current_user_id() ) );
 		if ( $nb ) {
 			$ok = 0 === $amt ? true : nb_refund( $nb, $amt, 'afbestilt' );
@@ -60,8 +68,8 @@ add_action( 'admin_post_nb_act', function () {
 	} elseif ( 'resend' === $act ) {
 		$msg = nb_mail_resend( $b ) ? 'E-mail sendt igen.' : 'E-mailen fejlede igen.';
 	}
-	wp_safe_redirect( add_query_arg( array( 'page' => 'nb-bookings', 'b' => $id, 'msg' => rawurlencode( $msg ) ), admin_url( 'admin.php' ) ) ); exit;
-} );
+	return $msg ?: 'Ukendt handling.';
+}
 
 function nb_btn( $b, $act, $label, $cls = 'button', $extra = '', $confirm = '' ) {
 	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline-block;margin:0 6px 6px 0"' . ( $confirm ? ' onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm ) ) . ')"' : '' ) . '>';
