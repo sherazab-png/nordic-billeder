@@ -12,7 +12,7 @@ function nb_send( $b, $kind, $to, $subject, $body ) {
 	return $ok;
 }
 function nb_visit_link( $b ) { $s = nb_settings(); return add_query_arg( array( 'nb' => 'visit', 'ref' => $b->ref ), $s['page_url'] ?: home_url( '/' ) ); }
-function nb_sig() { $s = nb_settings(); return "\n\nVenlig hilsen\nNordic DEXA Scan\n" . $s['address'] . "\nTlf. " . $s['phone']; }
+function nb_sig() { $s = nb_settings(); return "\n\nVenlig hilsen\n" . $s['address'] . "\nTlf. " . $s['phone']; }
 
 function nb_mail_paid( $b ) {
 	$s = nb_settings();
