@@ -765,6 +765,29 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'plugupd' === $fn ) {
+		// Tving opdateringskontrol og opdater ét plugin (bruges når Hostinger ikke ser opdateringen, fx Elementor Pro).
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		$file = $op['file'];
+		delete_site_transient( 'update_plugins' );
+		wp_update_plugins();
+		$tr = get_site_transient( 'update_plugins' );
+		$o = array( 'before' => get_plugin_data( WP_PLUGIN_DIR . '/' . $file, false, false )['Version'], 'offer' => isset( $tr->response[ $file ] ) ? $tr->response[ $file ]->new_version : null );
+		if ( ! empty( $op['go'] ) && $o['offer'] ) {
+			wp_set_current_user( (int) $op['as'] );
+			$up = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
+			$r = $up->upgrade( $file );
+			$o['result'] = is_wp_error( $r ) ? $r->get_error_message() : $r;
+			$o['messages'] = $up->skin->get_upgrade_messages();
+			wp_clean_plugins_cache();
+			$o['after'] = get_plugin_data( WP_PLUGIN_DIR . '/' . $file, false, false )['Version'];
+			$o['active'] = is_plugin_active( $file );
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
