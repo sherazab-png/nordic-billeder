@@ -15,6 +15,11 @@ add_action( 'rest_api_init', function () {
 	}
 } );
 
+/* LiteSpeed cacher ellers REST-svar (ledige tider ville blive vist forkert). */
+add_filter( 'rest_pre_dispatch', function ( $r, $server, $req ) {
+	if ( 0 === strpos( $req->get_route(), '/nordic-booking/' ) ) { do_action( 'litespeed_control_set_nocache', 'nordic booking' ); if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); } }
+	return $r;
+}, 1, 3 );
 add_filter( 'rest_post_dispatch', function ( $res, $server, $req ) {
 	if ( 0 === strpos( $req->get_route(), '/nordic-booking/' ) && $res instanceof WP_REST_Response ) { $res->header( 'Cache-Control', 'no-store, private' ); }
 	return $res;

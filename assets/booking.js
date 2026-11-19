@@ -36,7 +36,7 @@
 		var from = iso(new Date(y, m, 1)), to = iso(new Date(y, m + 1, 0));
 		q('#nbd-mon').textContent = MON[m] + ' ' + y;
 		q('#nbd-days').classList.add('nbd-load');
-		fetch(NB.api + 'slots?from=' + from + '&to=' + to, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+		fetch(NB.api + 'slots?from=' + from + '&to=' + to + '&_=' + Date.now(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
 			slots = {};
 			(j.slots || []).forEach(function (s) { (slots[s.date] = slots[s.date] || []).push(s); });
 			cal(); times();
@@ -98,7 +98,7 @@
 		result('Tak - vi behandler din betaling', 'Et øjeblik ...');
 		var tries = 0;
 		(function poll() {
-			fetch(NB.api + 'status?ref=' + encodeURIComponent(ref)).then(function (r) { return r.json(); }).then(function (j) {
+			fetch(NB.api + 'status?ref=' + encodeURIComponent(ref) + '&_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
 				if (j.status === 'paid' || j.status === 'approved') {
 					result('Tak - din booking er modtaget', 'Din tid ' + j.when + ' er betalt. En læge gennemgår nu din visitation, og du får en bekræftelse på e-mail. Kan scanningen ikke godkendes, refunderer vi hele beløbet.');
 					try { if (window.gtag) { window.gtag('event', 'booking_completed'); } } catch (x) {}
