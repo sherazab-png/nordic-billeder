@@ -22,7 +22,7 @@ add_action( 'init', function () {
 add_filter( 'pre_wp_mail', function ( $r, $a ) {
 	$log = (array) get_option( 'nordic_dev_mail', array() );
 	$fail = (bool) get_option( 'nordic_dev_mail_fail' );
-	array_unshift( $log, array( 'at' => gmdate( 'c' ), 'to' => $a['to'], 'subject' => $a['subject'], 'body' => $a['message'], 'fail' => $fail ) );
+	array_unshift( $log, array( 'at' => gmdate( 'c' ), 'to' => $a['to'], 'subject' => $a['subject'], 'body' => $a['message'], 'fail' => $fail, 'att' => array_map( function ( $f ) { return basename( $f ) . ': ' . ( file_exists( $f ) ? substr( (string) file_get_contents( $f ), 0, 400 ) : 'MANGLER' ); }, (array) ( $a['attachments'] ?? array() ) ) ) );
 	update_option( 'nordic_dev_mail', array_slice( $log, 0, 100 ), false );
 	return ! $fail;
 }, 1, 2 );
