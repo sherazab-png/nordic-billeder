@@ -948,6 +948,17 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		if ( ! empty( $op['mu'] ) ) { $o['mu'] = copy( __DIR__ . '/dev/nordic-dev-laas.php', $dst . '/wp-content/mu-plugins/nordic-dev-laas.php' ); }
 		if ( ! empty( $op['cfgrepl'] ) ) { $c = file_get_contents( $dst . '/wp-config.php' ); foreach ( (array) $op['cfgrepl'] as $r ) { $c = str_replace( $r[0], $r[1], $c, $n ); $o['cfgrepl'][] = $n; } file_put_contents( $dst . '/wp-config.php', $c ); }
+		if ( ! empty( $op['nbslots'] ) ) {
+			$tz = new DateTimeZone( 'Europe/Copenhagen' ); $n = 0;
+			for ( $i = 0; $i < (int) $op['nbslots']; $i++ ) {
+				$d = new DateTime( 'today +' . $i . ' days', $tz ); if ( (int) $d->format( 'N' ) > 5 ) { continue; }
+				for ( $a = new DateTime( $d->format( 'Y-m-d' ) . ' 08:30', $tz ), $e = new DateTime( $d->format( 'Y-m-d' ) . ' 15:00', $tz ); $a < $e; $a->modify( '+20 minutes' ) ) {
+					$u = clone $a; $u->setTimezone( new DateTimeZone( 'UTC' ) );
+					$n += (int) $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO `{$np}nb_slots` (starts_utc, dur_min, status) VALUES (%s, 20, 'open')", $u->format( 'Y-m-d H:i:s' ) ) );
+				}
+			}
+			$o['nbslots'] = $n;
+		}
 		if ( ! empty( $op['rm'] ) ) { foreach ( (array) $op['rm'] as $f ) { $p = $dst . '/' . ltrim( $f, '/' ); if ( false === strpos( $f, '..' ) && file_exists( $p ) ) { $o['rm'][ $f ] = @unlink( $p ); } } }
 		if ( ! empty( $op['sql'] ) ) {
 			foreach ( (array) $op['sql'] as $i => $q ) {
