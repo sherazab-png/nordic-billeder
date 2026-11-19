@@ -903,6 +903,22 @@ function nordic_imp_run( $op, &$st ) {
 		if ( is_array( $j ) ) { foreach ( array( 'package', 'download_link' ) as $k ) { if ( ! empty( $j[ $k ] ) ) { $j[ $k ] = '[link findes]'; } } unset( $j['sections'] ); }
 		return array( 'summary' => array( 'code' => wp_remote_retrieve_response_code( $r ), 'body' => is_array( $j ) ? $j : substr( $b, 0, 400 ), 'lock' => get_option( '_elementor_pro_api_requests_lock' ) ) );
 	}
+	if ( 'uploadsguard' === $fn ) {
+		// Bloker kørsel af PHP i uploads (værn mod filupload-sårbarheder). Test med en ufarlig testfil.
+		$up = wp_upload_dir(); $h = $up['basedir'] . '/.htaccess';
+		$rule = "# BEGIN nordic-uploads-guard\n<FilesMatch \"\\.(php[0-9]?|phtml|phar|pht|phps)$\">\nRequire all denied\n</FilesMatch>\n# END nordic-uploads-guard\n";
+		$cur = file_exists( $h ) ? (string) file_get_contents( $h ) : '';
+		$o = array( 'existed' => file_exists( $h ), 'had_rule' => false !== strpos( $cur, 'nordic-uploads-guard' ) );
+		if ( ! $o['had_rule'] ) { file_put_contents( $h, $cur . ( $cur && "\n" !== substr( $cur, -1 ) ? "\n" : '' ) . $rule ); }
+		$tf = $up['basedir'] . '/nordic-guard-test.php';
+		file_put_contents( $tf, "<?php echo 'KOERER';" );
+		$r = wp_remote_get( $up['baseurl'] . '/nordic-guard-test.php?nc=' . wp_rand(), array( 'timeout' => 15, 'sslverify' => false ) );
+		$o['test_code'] = is_wp_error( $r ) ? $r->get_error_message() : wp_remote_retrieve_response_code( $r );
+		$o['test_ran'] = ! is_wp_error( $r ) && false !== strpos( wp_remote_retrieve_body( $r ), 'KOERER' );
+		@unlink( $tf );
+		$o['test_removed'] = ! file_exists( $tf );
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
