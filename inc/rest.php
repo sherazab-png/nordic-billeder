@@ -55,6 +55,9 @@ function nb_rest_hold( WP_REST_Request $r ) {
 	$email = sanitize_email( (string) ( $p['email'] ?? '' ) );
 	$phone = preg_replace( '/[^0-9+ ]/', '', (string) ( $p['phone'] ?? '' ) );
 	if ( mb_strlen( $name ) < 2 || ! is_email( $email ) || strlen( preg_replace( '/\D/', '', $phone ) ) < 8 ) { return nb_err( 'nb_val', 'Udfyld navn, e-mail og telefonnummer.', 422 ); }
+	$cpr = preg_replace( '/\s/', '', (string) ( $p['cpr'] ?? '' ) );
+	if ( ! preg_match( '/^(\d{2})(\d{2})(\d{2})-?(\d{4})$/', $cpr, $cm ) || (int) $cm[1] < 1 || (int) $cm[1] > 31 || (int) $cm[2] < 1 || (int) $cm[2] > 12 ) { return nb_err( 'nb_val', 'Skriv fødselsdato som ddmmåå-xxxx.', 422 ); }
+	$cpr = $cm[1] . $cm[2] . $cm[3] . '-' . $cm[4];
 	if ( empty( $p['accept'] ) ) { return nb_err( 'nb_val', 'Du skal acceptere handelsbetingelser og privatlivspolitik.', 422 ); }
 	$page = (int) ( $p['page'] ?? 0 );
 	if ( ! $page || ! has_shortcode( (string) get_post_field( 'post_content', $page ), 'nordic_booking' ) ) { return nb_err( 'nb_val', 'Ugyldig side.', 400 ); }
@@ -64,7 +67,7 @@ function nb_rest_hold( WP_REST_Request $r ) {
 	if ( ! nb_key() ) { nb_log( null, 'crypto_error', 'nøgle mangler' ); return nb_err( 'nb_off', 'Online booking er midlertidigt lukket. Ring til os.', 503 ); }
 	$s = nb_settings(); $now = nb_now();
 	$ref = wp_generate_password( 24, false, false );
-	$wpdb->insert( nb_t( 'bookings' ), array( 'ref' => $ref, 'slot_id' => $slot->id, 'starts_utc' => $slot->starts_utc, 'status' => 'hold', 'name' => $name, 'email' => $email, 'phone' => $phone, 'amount' => (int) $s['price_ore'], 'currency' => $s['currency'], 'created_at' => $now, 'updated_at' => $now ) );
+	$wpdb->insert( nb_t( 'bookings' ), array( 'ref' => $ref, 'slot_id' => $slot->id, 'starts_utc' => $slot->starts_utc, 'status' => 'hold', 'name' => $name, 'email' => $email, 'phone' => $phone, 'cpr' => nb_encrypt( array( 'cpr' => $cpr ) ), 'amount' => (int) $s['price_ore'], 'currency' => $s['currency'], 'created_at' => $now, 'updated_at' => $now ) );
 	$bid = (int) $wpdb->insert_id;
 	if ( ! $bid ) { return nb_err( 'nb_db', 'Teknisk fejl. Prøv igen, eller ring til os.', 500 ); }
 	$held = gmdate( 'Y-m-d H:i:s', time() + max( 30, (int) $s['hold_min'] ) * 60 );
@@ -109,7 +112,7 @@ function nb_rest_visit( WP_REST_Request $r ) {
 	if ( 1 !== (int) $n ) { return nb_err( 'nb_done', 'Dine svar er allerede modtaget.', 409 ); }
 	nb_log( $b->id, 'visit', 'modtaget' );
 	$b = nb_get( 'id', $b->id );
-	if ( 'paid' === $b->status ) { nb_mail_clinic_new( $b ); }
+	if ( 'paid' === $b->status ) { if ( $b->clinic_mail_at ) { nb_mail_clinic_answers( $b ); } else { nb_mail_clinic_new( $b ); } }
 	return array( 'ok' => 1, 'flag' => ( 'ja' === $gravid || 'ja' === $graense ) );
 }
 
@@ -178,7 +181,7 @@ function nb_rest_mock_tool( WP_REST_Request $r ) {
 	if ( 'badsig' === $act ) { $l = get_option( 'nb_mock_last' ); return $l ? nb_webhook_process( $l['payload'], 't=' . time() . ',v1=' . str_repeat( 'a', 64 ) ) : array(); }
 	if ( 'oldsig' === $act ) { $l = get_option( 'nb_mock_last' ); if ( ! $l ) { return array(); } $t = time() - 3600; return nb_webhook_process( $l['payload'], 't=' . $t . ',v1=' . hash_hmac( 'sha256', $t . '.' . $l['payload'], nb_whsec() ) ); }
 	if ( 'mailfail' === $act ) { update_option( 'nordic_dev_mail_fail', empty( $p['on'] ) ? 0 : 1 ); return array( 'mailfail' => (int) get_option( 'nordic_dev_mail_fail' ) ); }
-	if ( 'mails' === $act ) { return array_map( function ( $m ) { return array( 'to' => $m['to'], 's' => $m['subject'], 'fail' => $m['fail'], 'body' => mb_substr( $m['body'], 0, 600 ) ); }, array_slice( (array) get_option( 'nordic_dev_mail', array() ), 0, (int) ( $p['n'] ?? 10 ) ) ); }
+	if ( 'mails' === $act ) { return array_map( function ( $m ) { return array( 'to' => $m['to'], 's' => $m['subject'], 'fail' => $m['fail'], 'body' => mb_substr( $m['body'], 0, 1500 ), 'att' => $m['att'] ?? null ); }, array_slice( (array) get_option( 'nordic_dev_mail', array() ), 0, (int) ( $p['n'] ?? 10 ) ) ); }
 	if ( 'state' === $act ) {
 		$b = nb_get( 'ref', (string) ( $p['ref'] ?? '' ) );
 		if ( ! $b ) { return array(); }

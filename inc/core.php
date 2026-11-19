@@ -50,6 +50,9 @@ function nb_activate() {
 		phone VARCHAR(40) NOT NULL,
 		visit MEDIUMTEXT NULL,
 		visit_at DATETIME NULL,
+		cpr TEXT NULL,
+		receipt_url VARCHAR(500) NULL,
+		clinic_mail_at DATETIME NULL,
 		reminded_at DATETIME NULL,
 		amount INT UNSIGNED NOT NULL,
 		currency CHAR(3) NOT NULL,
@@ -206,7 +209,14 @@ function nb_mark_paid( $b, $session ) {
 		}
 	}
 	$nb = nb_transition( $b, array( 'hold', 'expired' ), 'paid', array( 'pi_id' => $pi, 'paid_at' => nb_now(), 'purge_after' => $purge ) );
-	if ( $nb ) { nb_fix_slot( $nb ); nb_mail_paid( $nb ); if ( $nb->visit_at ) { nb_mail_clinic_new( $nb ); } }
+	if ( $nb ) {
+		nb_fix_slot( $nb );
+		// Kvitteringslink fra Stripe til klinikmailen.
+		$pi_obj = $pi ? nb_stripe( 'GET', 'payment_intents/' . rawurlencode( $pi ), array( 'expand' => array( 'latest_charge' ) ) ) : null;
+		if ( is_array( $pi_obj ) && ! empty( $pi_obj['latest_charge']['receipt_url'] ) ) { $GLOBALS['wpdb']->update( nb_t( 'bookings' ), array( 'receipt_url' => substr( $pi_obj['latest_charge']['receipt_url'], 0, 500 ) ), array( 'id' => $nb->id ) ); $nb = nb_get( 'id', $nb->id ); }
+		nb_mail_paid( $nb );
+		if ( $nb->visit_at ) { nb_mail_clinic_new( $nb ); }
+	}
 	return $nb ?: nb_get( 'id', $b->id );
 }
 
@@ -241,6 +251,8 @@ function nb_remind() {
 	foreach ( $rows as $b ) {
 		if ( 1 !== (int) $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET reminded_at=%s WHERE id=%d AND reminded_at IS NULL', nb_now(), $b->id ) ) ) { continue; }
 		nb_mail_reminder( $b );
+		// Klinikken får bookingen nu, så tiden kan sættes i kalenderen, selv om svarene mangler.
+		if ( ! $b->clinic_mail_at ) { nb_mail_clinic_new( nb_get( 'id', $b->id ) ); }
 	}
 }
 function nb_cleanup_holds() {
@@ -261,7 +273,7 @@ function nb_cleanup_holds() {
 add_action( 'nb_cron_daily', 'nb_purge' );
 function nb_purge() {
 	global $wpdb;
-	$n = $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET visit=NULL WHERE visit IS NOT NULL AND purge_after IS NOT NULL AND purge_after < %s', nb_now() ) );
+	$n = $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET visit=NULL, cpr=NULL WHERE ( visit IS NOT NULL OR cpr IS NOT NULL ) AND purge_after IS NOT NULL AND purge_after < %s', nb_now() ) );
 	if ( $n ) { nb_log( null, 'purge_visit', (string) $n ); }
 	// Ikke-betalte reservationer slettes helt efter 7 dage (dataminimering).
 	$old = gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS );

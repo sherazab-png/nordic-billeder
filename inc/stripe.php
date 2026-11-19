@@ -139,6 +139,10 @@ function nb_mock_api( $method, $path, $p ) {
 		if ( ! empty( $x[2] ) && 'open' === $m['cs'][ $id ]['status'] ) { $m['cs'][ $id ]['status'] = 'expired'; nb_mock_store( $m ); }
 		return $m['cs'][ $id ];
 	}
+	if ( 'GET' === $method && 0 === strpos( $path, 'payment_intents/' ) ) {
+		$id = rawurldecode( substr( $path, 16 ) );
+		return array( 'id' => $id, 'latest_charge' => array( 'receipt_url' => 'https://pay.stripe.com/receipts/test-mock/' . $id ) );
+	}
 	if ( 'POST' === $method && 'refunds' === $path ) {
 		$pi = $p['payment_intent'];
 		if ( empty( $m['pi'][ $pi ] ) ) { return new WP_Error( 'nb_stripe', 'Stripe 404: No such payment_intent' ); }

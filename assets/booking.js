@@ -20,7 +20,7 @@
 
 	function valid() {
 		if (step === 1) { return !!sel.slot; }
-		if (step === 2) { return q('#nbd-n').value.trim().length > 1 && /\S+@\S+\.\S+/.test(q('#nbd-e').value) && q('#nbd-t').value.replace(/\D/g, '').length >= 8 && q('#nbd-ok').checked; }
+		if (step === 2) { return q('#nbd-n').value.trim().length > 1 && /\S+@\S+\.\S+/.test(q('#nbd-e').value) && q('#nbd-t').value.replace(/\D/g, '').length >= 8 && /^\d{6}-?\d{4}$/.test(q('#nbd-c').value.replace(/\s/g, '')) && q('#nbd-ok').checked; }
 		if (step === 4) {
 			q('[data-stop=g]').hidden = v('nbd_g') !== 'ja'; q('[data-stop=h]').hidden = v('nbd_h') !== 'ja';
 			return !busy && !!v('nbd_f') && !!v('nbd_g') && !!v('nbd_h');
@@ -69,7 +69,7 @@
 
 	function pay() {
 		busy = true; show(); err('');
-		post('hold', { slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value, name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, accept: q('#nbd-ok').checked })
+		post('hold', { slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value, name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, cpr: q('#nbd-c').value, accept: q('#nbd-ok').checked })
 			.then(function (x) {
 				if (x.ok && x.j.url) { window.location.href = x.j.url; return; }
 				busy = false;

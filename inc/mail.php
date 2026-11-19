@@ -1,5 +1,5 @@
 <?php
-/* E-mails. Ingen helbredsoplysninger i nogen e-mail. Fejl logges og vises i admin, og kan sendes igen. */
+/* E-mails. Ingen helbredsoplysninger i e-mails til patienten. Kun klinikmailen indeholder alle oplysninger. Fejl logges og vises i admin, og kan sendes igen. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 function nb_send( $b, $kind, $to, $subject, $body ) {
@@ -19,11 +19,74 @@ function nb_mail_paid( $b ) {
 	return nb_send( $b, 'paid', $b->email, 'Vi har modtaget din booking - ' . nb_human( $b->starts_utc ),
 		"Hej " . $b->name . "\n\nTak for din booking af " . $s['product'] . " " . nb_human( $b->starts_utc ) . ".\n\nVi har modtaget din betaling.\n\n" . ( $b->visit_at ? "En læge gennemgår nu dine svar på de supplerende spørgsmål, fordi en DEXA-scanning skal være berettiget. Du får en bekræftelse, når det er sket." : "Besvar venligst de supplerende spørgsmål, hvis du ikke allerede har gjort det. En DEXA-scanning skal være berettiget, og en læge skal godkende den, før din tid er endeligt bekræftet:\n" . nb_visit_link( $b ) ) . "\n\nKan scanningen ikke godkendes, refunderer vi hele beløbet.\n\nDin kvittering kommer i en separat e-mail fra vores betalingsudbyder Stripe.\n\nBookingnummer: " . $b->ref . nb_sig() );
 }
+/* Samlet mail til klinikken med alle oplysninger, så tiden kan overføres til klinikkens kalender.
+   Indeholder CPR og helbredssvar: sendes via sitets Microsoft 365-forbindelse (TLS) til klinikkens egen postkasse,
+   og FluentSMTP må ikke gemme en kopi af denne mail i WordPress. */
 function nb_mail_clinic_new( $b ) {
+	global $wpdb;
 	$s = nb_settings();
-	$ok = nb_send( null, 'klinik', $s['clinic_email'], 'Ny online booking afventer lægefaglig vurdering',
-		"Betalt booking med besvarede supplerende spørgsmål " . nb_human( $b->starts_utc ) . ".\n\nGennemgå svarene her:\n" . admin_url( 'admin.php?page=nb-bookings&b=' . (int) $b->id ) . "\n\n(E-mailen indeholder bevidst ingen patient- eller helbredsoplysninger.)" );
-	nb_log( $b->id, $ok ? 'mail_ok' : 'mail_fejl', 'klinik' );
+	$f = array( 'kost' => 'Kostomlægning eller vægttab', 'sport' => 'Optimering af sportspræstation', 'opf' => 'Opfølgning efter sygdom eller behandling', 'andet' => 'Andet' );
+	$v = $b->visit_at ? nb_decrypt( $b->visit ) : null;
+	$c = nb_decrypt( $b->cpr );
+	$dur = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT dur_min FROM ' . nb_t( 'slots' ) . ' WHERE id=%d', $b->slot_id ) ) ?: 20;
+	$L = array();
+	$L[] = 'NY ONLINE BOOKING - ' . mb_strtoupper( $s['product'] );
+	$L[] = '';
+	$L[] = 'TID';
+	$L[] = ucfirst( nb_human( $b->starts_utc ) ) . ' (' . $dur . ' min.)';
+	$L[] = '';
+	$L[] = 'PATIENT';
+	$L[] = 'Navn: ' . $b->name;
+	$L[] = 'Fødselsdato (CPR): ' . ( $c['cpr'] ?? '-' );
+	$L[] = 'Telefon: ' . $b->phone;
+	$L[] = 'E-mail: ' . $b->email;
+	$L[] = '';
+	$L[] = 'BETALING';
+	$L[] = 'Godkendt: ' . number_format( $b->amount / 100, 2, ',', '.' ) . ' kr. ' . ( $b->paid_at ? nb_local( $b->paid_at, 'd.m.Y H:i' ) : '' );
+	$L[] = 'Betalings-id (Stripe): ' . ( $b->pi_id ?: '-' );
+	$L[] = 'Kvittering: ' . ( $b->receipt_url ?: 'sendes af Stripe til patienten' );
+	$L[] = 'Bookingnummer: ' . $b->ref;
+	$L[] = '';
+	$L[] = 'SUPPLERENDE SPØRGSMÅL';
+	if ( $v ) {
+		$L[] = 'Formål: ' . ( $f[ $v['formaal'] ] ?? $v['formaal'] );
+		$L[] = 'Gravid: ' . $v['gravid'];
+		$L[] = 'Over 197 cm eller 159 kg: ' . $v['graense'];
+		$L[] = 'Bemærkning: ' . ( '' !== $v['note'] ? $v['note'] : '(ingen)' );
+		if ( 'ja' === $v['gravid'] || 'ja' === $v['graense'] ) { $L[] = ''; $L[] = 'OBS: Svarene kræver lægefaglig opfølgning før scanningen.'; }
+	} else {
+		$L[] = 'Ikke besvaret endnu. Patienten har fået link og påmindelse. Svarene sendes i en ny mail, når de kommer.';
+	}
+	$L[] = '';
+	$L[] = 'Godkend eller afvis scanningen:';
+	$L[] = admin_url( 'admin.php?page=nb-bookings&b=' . (int) $b->id );
+	$L[] = '';
+	$L[] = 'Kalenderinvitation er vedhæftet (.ics).';
+	$L[] = 'FORTROLIGT: indeholder CPR- og helbredsoplysninger. Må ikke videresendes uden for klinikken.';
+	// Kalenderfil (uden helbredsoplysninger).
+	$st = gmdate( 'Ymd\THis\Z', strtotime( $b->starts_utc . ' UTC' ) ); $en = gmdate( 'Ymd\THis\Z', strtotime( $b->starts_utc . ' UTC' ) + $dur * 60 );
+	$esc = function ( $x ) { return addcslashes( str_replace( "\n", '\n', $x ), ',;' ); };
+	$ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Nordic DEXA Scan//Booking//DA\r\nMETHOD:PUBLISH\r\nBEGIN:VEVENT\r\nUID:" . $b->ref . "@nordicdexascan.dk\r\nDTSTAMP:" . gmdate( 'Ymd\THis\Z' ) . "\r\nDTSTART:$st\r\nDTEND:$en\r\nSUMMARY:" . $esc( 'DEXA Basis - ' . $b->name ) . "\r\nLOCATION:" . $esc( str_replace( "\n", ', ', $s['address'] ) ) . "\r\nDESCRIPTION:" . $esc( 'Online booking ' . $b->ref . '. Tlf. ' . $b->phone ) . "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+	$tmp = trailingslashit( get_temp_dir() ) . 'dexa-booking-' . $b->ref . '.ics';
+	file_put_contents( $tmp, $ics );
+	add_filter( 'fluentmail_will_log_email', '__return_false', 999 );
+	$ok = wp_mail( $s['clinic_email'], 'Ny online booking ' . nb_local( $b->starts_utc, 'd.m.Y H:i' ) . ' - ' . $b->name, implode( "\n", $L ), array( 'Content-Type: text/plain; charset=UTF-8' ), array( $tmp ) );
+	remove_filter( 'fluentmail_will_log_email', '__return_false', 999 );
+	@unlink( $tmp );
+	$wpdb->update( nb_t( 'bookings' ), array( 'clinic_mail_at' => nb_now() ), array( 'id' => $b->id ) );
+	nb_log( $b->id, $ok ? 'mail_ok' : 'mail_fejl', 'klinik' . ( $v ? '' : ' (uden svar)' ) );
+	return $ok;
+}
+/* Svar modtaget efter at klinikmailen allerede er sendt uden svar. */
+function nb_mail_clinic_answers( $b ) {
+	$s = nb_settings();
+	$f = array( 'kost' => 'Kostomlægning eller vægttab', 'sport' => 'Optimering af sportspræstation', 'opf' => 'Opfølgning efter sygdom eller behandling', 'andet' => 'Andet' );
+	$v = nb_decrypt( $b->visit ); if ( ! $v ) { return false; }
+	add_filter( 'fluentmail_will_log_email', '__return_false', 999 );
+	$ok = wp_mail( $s['clinic_email'], 'Svar modtaget: booking ' . nb_local( $b->starts_utc, 'd.m.Y H:i' ) . ' - ' . $b->name,
+		"SUPPLERENDE SPØRGSMÅL\nFormål: " . ( $f[ $v['formaal'] ] ?? $v['formaal'] ) . "\nGravid: " . $v['gravid'] . "\nOver 197 cm eller 159 kg: " . $v['graense'] . "\nBemærkning: " . ( '' !== $v['note'] ? $v['note'] : '(ingen)' ) . "\n\nGodkend eller afvis:\n" . admin_url( 'admin.php?page=nb-bookings&b=' . (int) $b->id ) . "\n\nFORTROLIGT: indeholder helbredsoplysninger.", array( 'Content-Type: text/plain; charset=UTF-8' ) );
+	remove_filter( 'fluentmail_will_log_email', '__return_false', 999 );
+	nb_log( $b->id, $ok ? 'mail_ok' : 'mail_fejl', 'klinik svar' );
 	return $ok;
 }
 function nb_mail_approved( $b ) {

@@ -105,6 +105,8 @@ function nb_admin_detail( $id ) {
 	echo '<table class="form-table"><tr><th>Status</th><td><b>' . esc_html( nb_status_label( $b->status ) ) . '</b></td></tr>';
 	echo '<tr><th>Tid</th><td>' . esc_html( nb_human( $b->starts_utc ) ) . '</td></tr>';
 	echo '<tr><th>Navn</th><td>' . esc_html( $b->name ) . '</td></tr><tr><th>E-mail</th><td>' . esc_html( $b->email ) . '</td></tr><tr><th>Telefon</th><td>' . esc_html( $b->phone ) . '</td></tr>';
+	if ( current_user_can( 'nb_view_health' ) ) { $c = nb_decrypt( $b->cpr ); echo '<tr><th>Fødselsdato (CPR)</th><td>' . esc_html( $c['cpr'] ?? ( $b->cpr ? 'kan ikke dekrypteres' : 'slettet' ) ) . '</td></tr>'; }
+	echo ( $b->receipt_url ? '<tr><th>Kvittering</th><td><a href="' . esc_url( $b->receipt_url ) . '" target="_blank" rel="noopener">Stripe-kvittering</a></td></tr>' : '' ) . '<tr><th>Klinikmail</th><td>' . esc_html( $b->clinic_mail_at ? nb_local( $b->clinic_mail_at, 'd.m.Y H:i' ) : 'ikke sendt' ) . '</td></tr>';
 	echo '<tr><th>Betaling</th><td>' . esc_html( number_format( $b->amount / 100, 2, ',', '.' ) ) . ' kr.' . ( $b->refunded ? ', refunderet ' . esc_html( number_format( $b->refunded / 100, 2, ',', '.' ) ) . ' kr.' : '' ) . ( $b->pi_id ? '<br><code>' . esc_html( $b->pi_id ) . '</code>' : '' ) . '</td></tr>';
 	echo '<tr><th>Bookingnummer</th><td><code>' . esc_html( $b->ref ) . '</code></td></tr>';
 	echo '<tr><th>E-mail-status</th><td>' . esc_html( $b->mail_state ?: '-' ) . '</td></tr>';
