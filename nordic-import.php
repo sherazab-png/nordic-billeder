@@ -714,6 +714,16 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'draftpage' === $fn ) {
+		// Opretter eller opdaterer en side, der altid forbliver kladde (aldrig udgivet).
+		$ex = get_posts( array( 'post_type' => 'page', 'post_status' => array( 'draft', 'private', 'pending' ), 'meta_key' => '_nordic_draft_key', 'meta_value' => $op['key'], 'numberposts' => 1, 'fields' => 'ids' ) );
+		$arr = array( 'post_type' => 'page', 'post_status' => 'draft', 'post_title' => $op['title'], 'post_name' => $op['slug'], 'post_content' => $op['content'] );
+		if ( $ex ) { $arr['ID'] = $ex[0]; $pid = wp_update_post( $arr, true ); } else { $pid = wp_insert_post( $arr, true ); }
+		if ( is_wp_error( $pid ) ) { return array( 'error' => $pid->get_error_message() ); }
+		update_post_meta( $pid, '_nordic_draft_key', $op['key'] );
+		update_post_meta( $pid, 'rank_math_robots', array( 'noindex', 'nofollow' ) );
+		return array( 'summary' => array( 'id' => $pid, 'status' => get_post_status( $pid ), 'preview' => add_query_arg( array( 'page_id' => $pid, 'preview' => 'true' ), home_url( '/' ) ) ) );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
