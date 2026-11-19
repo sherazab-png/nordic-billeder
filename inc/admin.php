@@ -38,6 +38,7 @@ add_action( 'admin_post_nb_act', function () {
 /* Fælles handlinger (bruges af admin og af testværktøjet). */
 function nb_do_action( $b, $act, $amt = null ) {
 	$msg = ''; $id = (int) $b->id;
+	if ( 'approve' === $act && ! $b->visit_at ) { return 'Kan ikke godkendes: visitationen er ikke udfyldt endnu.'; }
 	if ( 'approve' === $act ) {
 		$nb = nb_transition( $b, array( 'paid' ), 'approved', array( 'decided_at' => nb_now(), 'decided_by' => get_current_user_id() ) );
 		$msg = $nb ? ( nb_mail_approved( $nb ) ? 'Godkendt, og bekræftelse sendt.' : 'Godkendt, men e-mailen fejlede.' ) : 'Kunne ikke godkende (status er ændret).';
@@ -85,12 +86,12 @@ function nb_admin_bookings() {
 	if ( 'paid' === $st ) { $where = "status='paid'"; }
 	elseif ( 'problem' === $st ) { $where = "(mail_state LIKE 'fejl:%' OR status='refund_failed')"; }
 	elseif ( 'all' === $st ) { $where = '1=1'; }
-	$rows = $wpdb->get_results( 'SELECT id, ref, starts_utc, status, name, mail_state, refunded, amount FROM ' . nb_t( 'bookings' ) . " WHERE $where ORDER BY starts_utc DESC LIMIT 300" );
+	$rows = $wpdb->get_results( 'SELECT id, ref, starts_utc, status, name, mail_state, refunded, amount, visit_at FROM ' . nb_t( 'bookings' ) . " WHERE $where ORDER BY starts_utc DESC LIMIT 300" );
 	echo '<div class="wrap"><h1>Bookinger</h1><p>';
 	foreach ( array( '' => 'Aktuelle', 'paid' => 'Afventer læge', 'problem' => 'Fejl', 'all' => 'Alle' ) as $k => $l ) { echo '<a class="button' . ( $st === $k ? ' button-primary' : '' ) . '" href="' . esc_url( admin_url( 'admin.php?page=nb-bookings' . ( $k ? '&st=' . $k : '' ) ) ) . '">' . esc_html( $l ) . '</a> '; }
 	echo '</p><table class="widefat striped"><thead><tr><th>Tid</th><th>Navn</th><th>Status</th><th>Betaling</th><th>E-mail</th><th></th></tr></thead><tbody>';
 	foreach ( $rows as $r ) {
-		echo '<tr><td>' . esc_html( nb_local( $r->starts_utc, 'd.m.Y H:i' ) ) . '</td><td>' . esc_html( $r->name ) . '</td><td>' . esc_html( nb_status_label( $r->status ) ) . '</td><td>' . esc_html( number_format( $r->amount / 100, 0, ',', '.' ) ) . ' kr.' . ( $r->refunded ? ' (refunderet ' . esc_html( number_format( $r->refunded / 100, 2, ',', '.' ) ) . ')' : '' ) . '</td><td>' . ( 0 === strpos( (string) $r->mail_state, 'fejl' ) ? '<b style="color:#b32d2e">Fejlet</b>' : 'OK' ) . '</td><td><a href="' . esc_url( admin_url( 'admin.php?page=nb-bookings&b=' . (int) $r->id ) ) . '">Åbn</a></td></tr>';
+		echo '<tr><td>' . esc_html( nb_local( $r->starts_utc, 'd.m.Y H:i' ) ) . '</td><td>' . esc_html( $r->name ) . '</td><td>' . esc_html( nb_status_label( $r->status ) ) . ( 'paid' === $r->status && ! $r->visit_at ? ' <i>(visitation mangler)</i>' : '' ) . '</td><td>' . esc_html( number_format( $r->amount / 100, 0, ',', '.' ) ) . ' kr.' . ( $r->refunded ? ' (refunderet ' . esc_html( number_format( $r->refunded / 100, 2, ',', '.' ) ) . ')' : '' ) . '</td><td>' . ( 0 === strpos( (string) $r->mail_state, 'fejl' ) ? '<b style="color:#b32d2e">Fejlet</b>' : 'OK' ) . '</td><td><a href="' . esc_url( admin_url( 'admin.php?page=nb-bookings&b=' . (int) $r->id ) ) . '">Åbn</a></td></tr>';
 	}
 	if ( ! $rows ) { echo '<tr><td colspan="6">Ingen bookinger.</td></tr>'; }
 	echo '</tbody></table></div>';
@@ -109,6 +110,7 @@ function nb_admin_detail( $id ) {
 	echo '<tr><th>E-mail-status</th><td>' . esc_html( $b->mail_state ?: '-' ) . '</td></tr>';
 	echo '<tr><th>Visitation</th><td>';
 	if ( ! current_user_can( 'nb_view_health' ) ) { echo 'Kun synlig for lægerollen.'; }
+	elseif ( ! $b->visit_at ) { echo '<b>Ikke udfyldt endnu.</b> Patienten har fået et link i bekræftelsesmailen.'; }
 	elseif ( null === $b->visit ) { echo 'Slettet efter udløb af opbevaringsfristen.'; }
 	else {
 		$v = nb_decrypt( $b->visit );
@@ -122,7 +124,7 @@ function nb_admin_detail( $id ) {
 	}
 	echo '</td></tr></table><h2>Handlinger</h2>';
 	if ( 'paid' === $b->status ) {
-		nb_btn( $b, 'approve', 'Godkend scanningen', 'button button-primary' );
+		if ( $b->visit_at ) { nb_btn( $b, 'approve', 'Godkend scanningen', 'button button-primary' ); } else { echo '<p><i>Godkend bliver tilgængelig, når patienten har udfyldt visitationen.</i></p>'; }
 		nb_btn( $b, 'reject', 'Afvis og refunder hele beløbet', 'button', '', 'Afvis og refunder hele beløbet? Patienten får besked.' );
 	}
 	if ( in_array( $b->status, array( 'paid', 'approved' ), true ) ) {

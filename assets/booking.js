@@ -2,7 +2,8 @@
 	'use strict';
 	var R = document.getElementById('nbd');
 	if (!R || !window.NB) { return; }
-	var step = 1, sel = { slot: null, date: null, time: null }, view = new Date(), slots = {}, busy = false;
+	// Trin: 1 tid, 2 oplysninger, 3 betaling, 4 visitation (efter betaling).
+	var step = 1, sel = { slot: null, date: null, time: null }, view = new Date(), slots = {}, busy = false, ref = null;
 	view.setDate(1);
 	var MON = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
 	function q(s) { return R.querySelector(s); }
@@ -12,23 +13,26 @@
 	function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 	function err(t) { var e = q('#nbd-err'); e.textContent = t || ''; e.hidden = !t; }
 	function long(ds) { var p = ds.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' }); }
+	function post(path, body) {
+		return fetch(NB.api + path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+			.then(function (r) { return r.json().then(function (j) { return { ok: r.ok, code: r.status, j: j }; }); });
+	}
 
 	function valid() {
-		if (step === 1) {
-			var g = v('nbd_g'), h = v('nbd_h');
-			q('[data-stop=g]').hidden = g !== 'ja'; q('[data-stop=h]').hidden = h !== 'ja';
-			return !!v('nbd_f') && g === 'nej' && h === 'nej';
+		if (step === 1) { return !!sel.slot; }
+		if (step === 2) { return q('#nbd-n').value.trim().length > 1 && /\S+@\S+\.\S+/.test(q('#nbd-e').value) && q('#nbd-t').value.replace(/\D/g, '').length >= 8 && q('#nbd-ok').checked; }
+		if (step === 4) {
+			q('[data-stop=g]').hidden = v('nbd_g') !== 'ja'; q('[data-stop=h]').hidden = v('nbd_h') !== 'ja';
+			return !busy && !!v('nbd_f') && !!v('nbd_g') && !!v('nbd_h');
 		}
-		if (step === 2) { return !!sel.slot; }
-		if (step === 3) { return q('#nbd-n').value.trim().length > 1 && /\S+@\S+\.\S+/.test(q('#nbd-e').value) && q('#nbd-t').value.replace(/\D/g, '').length >= 8 && q('#nbd-ok').checked; }
 		return !busy;
 	}
 	function show() {
 		qa('.nbd-pane').forEach(function (p) { p.hidden = +p.dataset.p !== step; });
 		qa('.nbd-steps li').forEach(function (l) { var s = +l.dataset.s; l.className = s === step ? 'on' : (s < step ? 'done' : ''); });
-		q('#nbd-back').hidden = step === 1;
+		q('#nbd-back').hidden = step === 1 || step === 4;
 		var n = q('#nbd-next');
-		n.textContent = step === 4 ? 'Gå til betaling' : 'Videre';
+		n.textContent = step === 3 ? 'Gå til betaling' : (step === 4 ? 'Send spørgeskema' : 'Videre');
 		n.disabled = !valid();
 	}
 	function load() {
@@ -61,23 +65,31 @@
 		q('#nbd-dlab').textContent = 'Ledige tider ' + long(sel.date);
 		box.innerHTML = slots[sel.date].map(function (s) { return '<button type="button" data-t="' + s.id + '"' + (sel.slot === s.id ? ' class="sel"' : '') + '>' + s.time + '</button>'; }).join('');
 	}
-	function sum() { q('#nbd-st').textContent = sel.slot ? long(sel.date) + ' kl. ' + sel.time : 'Ikke valgt'; }
+	function sum(txt) { q('#nbd-st').textContent = txt || (sel.slot ? long(sel.date) + ' kl. ' + sel.time : 'Ikke valgt'); }
 
 	function pay() {
 		busy = true; show(); err('');
-		var body = {
-			slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value,
-			visit: { formaal: v('nbd_f'), gravid: v('nbd_g'), graense: v('nbd_h'), note: q('#nbd-x').value },
-			name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, accept: q('#nbd-ok').checked
-		};
-		fetch(NB.api + 'hold', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-			.then(function (r) { return r.json().then(function (j) { return { ok: r.ok, code: r.status, j: j }; }); })
+		post('hold', { slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value, name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, accept: q('#nbd-ok').checked })
 			.then(function (x) {
 				if (x.ok && x.j.url) { window.location.href = x.j.url; return; }
 				busy = false;
 				err((x.j && x.j.message) || 'Bookingen kunne ikke gennemføres. Prøv igen, eller ring til os.');
-				if (x.code === 409) { sel.slot = null; step = 2; load(); sum(); }
+				if (x.code === 409) { sel.slot = null; step = 1; load(); sum(); }
 				show();
+			}).catch(function () { busy = false; err('Forbindelsen fejlede. Prøv igen.'); show(); });
+	}
+	function sendVisit() {
+		busy = true; show(); err('');
+		post('visit', { ref: ref, visit: { formaal: v('nbd_f'), gravid: v('nbd_g'), graense: v('nbd_h'), note: q('#nbd-x').value } })
+			.then(function (x) {
+				busy = false;
+				if (x.ok) {
+					result('Tak - din booking er modtaget', x.j.flag
+						? 'Vi har modtaget dit spørgeskema. Ud fra dine svar kan scanningen sandsynligvis ikke gennemføres som planlagt. En læge kontakter dig, og kan scanningen ikke udføres, refunderer vi hele beløbet.'
+						: 'Vi har modtaget dit spørgeskema. En læge gennemgår det, og du får en bekræftelse på e-mail. Kan scanningen ikke godkendes, refunderer vi hele beløbet.');
+					return;
+				}
+				err((x.j && x.j.message) || 'Spørgeskemaet kunne ikke sendes. Prøv igen, eller ring til os.'); show();
 			}).catch(function () { busy = false; err('Forbindelsen fejlede. Prøv igen.'); show(); });
 	}
 
@@ -86,33 +98,44 @@
 		if (b.dataset.m) { view.setMonth(view.getMonth() + (+b.dataset.m)); sel.date = null; load(); return; }
 		if (b.dataset.d) { sel.date = b.dataset.d; cal(); times(); show(); return; }
 		if (b.dataset.t) { sel.slot = +b.dataset.t; sel.time = b.textContent; times(); sum(); show(); return; }
-		if (b.id === 'nbd-next' && !b.disabled) { if (step === 4) { pay(); return; } step++; err(''); if (step === 2) { load(); } show(); q('#nbd-flow').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+		if (b.id === 'nbd-next' && !b.disabled) {
+			if (step === 3) { pay(); return; }
+			if (step === 4) { sendVisit(); return; }
+			step++; err(''); show(); q('#nbd-flow').scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
+		}
 		if (b.id === 'nbd-back') { step--; err(''); show(); }
 	});
 	R.addEventListener('change', show); R.addEventListener('input', show);
 
-	// Tilbage fra betaling.
-	var u = new URLSearchParams(location.search), st = u.get('nb'), ref = u.get('ref');
-	function result(h, t) { q('#nbd-flow').hidden = true; var r = q('#nbd-result'); r.hidden = false; q('#nbd-rh').textContent = h; q('#nbd-rt').textContent = t; }
-	if (st === 'ok' && ref) {
-		result('Tak - vi behandler din betaling', 'Et øjeblik ...');
+	function result(h, t) { q('#nbd-flow').hidden = true; var r = q('#nbd-result'); r.hidden = false; q('#nbd-rh').textContent = h; q('#nbd-rt').textContent = t; r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+	function toVisit(j, paidNote) { step = 4; sum(j.when); q('#nbd-paid').hidden = !paidNote; show(); }
+
+	// Tilbage fra betaling, eller link fra e-mail til spørgeskemaet.
+	var u = new URLSearchParams(location.search), st = u.get('nb');
+	ref = u.get('ref');
+	if ((st === 'ok' || st === 'visit') && ref) {
 		var tries = 0;
 		(function poll() {
 			fetch(NB.api + 'status?ref=' + encodeURIComponent(ref) + '&_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
-				if (j.status === 'paid' || j.status === 'approved') {
-					result('Tak - din booking er modtaget', 'Din tid ' + j.when + ' er betalt. En læge gennemgår nu din visitation, og du får en bekræftelse på e-mail. Kan scanningen ikke godkendes, refunderer vi hele beløbet.');
-					try { if (window.gtag) { window.gtag('event', 'booking_completed'); } } catch (x) {}
+				if (j.visit) { result('Tak - vi har dit spørgeskema', 'Din tid ' + j.when + ' er registreret. Du får en bekræftelse på e-mail, når lægen har godkendt scanningen.'); return; }
+				if (j.status === 'paid') {
+					toVisit(j, true);
+					if (st === 'ok') { try { if (window.gtag) { window.gtag('event', 'booking_completed'); } } catch (x) {} }
 				} else if (j.status === 'hold' && tries++ < 10) { setTimeout(poll, 2000); }
-				else if (j.status === 'hold') { result('Betalingen behandles', 'Vi har endnu ikke fået bekræftelse fra betalingen. Du får en e-mail, så snart den er registreret. Kontakt os, hvis du ikke hører fra os.'); }
-				else { result('Bookingen kunne ikke gennemføres', 'Status: ' + j.label + '. Kontakt os, hvis du har spørgsmål.'); }
+				else if (j.status === 'hold') { toVisit(j, false); }
+				else if (j.status) { result('Bookingen er ikke aktiv', 'Status: ' + j.label + '. Kontakt os, hvis du har spørgsmål.'); }
+				else { result('Ukendt booking', 'Linket er ikke gyldigt. Kontakt os, hvis du har spørgsmål.'); }
 			}).catch(function () { result('Tak', 'Du får en e-mail, når betalingen er registreret.'); });
 		})();
 	} else if (st === 'cancel' && ref) {
-		fetch(NB.api + 'cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: ref }) }).then(function (r) { return r.json(); }).then(function (j) {
-			if (j.status === 'paid') { result('Tak - din booking er modtaget', 'Betalingen blev gennemført. Du får en e-mail.'); return; }
+		post('cancel', { ref: ref }).then(function (x) {
+			if (x.j.status === 'paid') { toVisit({ when: '' }, true); return; }
 			err('Betalingen blev afbrudt, og tiden er frigivet. Du kan vælge en ny tid.');
 		}).catch(function () {});
 		if (history.replaceState) { history.replaceState(null, '', location.pathname); }
+		load();
+	} else {
+		load();
 	}
 	show();
 })();

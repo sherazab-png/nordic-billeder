@@ -10,6 +10,8 @@ add_action( 'template_redirect', function () {
 	if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); }
 	do_action( 'litespeed_control_set_nocache', 'nordic booking' );
 	nocache_headers();
+	$s = nb_settings(); $u = get_permalink( get_queried_object_id() );
+	if ( $u && $s['page_url'] !== $u ) { $s['page_url'] = $u; update_option( 'nb_settings', $s ); }
 }, 1 );
 add_action( 'wp_enqueue_scripts', function () {
 	if ( ! nb_is_booking_page() ) { return; }
@@ -41,32 +43,11 @@ add_shortcode( 'nordic_booking', function () {
 
 <div class="nbd-box" id="nbd-flow">
 	<ol class="nbd-steps" aria-label="Trin">
-		<li data-s="1" class="on">Visitation</li><li data-s="2">Vælg tid</li><li data-s="3">Dine oplysninger</li><li data-s="4">Betaling</li>
+		<li data-s="1" class="on">Vælg tid</li><li data-s="2">Dine oplysninger</li><li data-s="3">Betaling</li><li data-s="4">Visitation</li>
 	</ol>
 	<div class="nbd-main">
 		<div>
 			<section class="nbd-pane" data-p="1">
-				<h2>Kort visitation</h2>
-				<p class="nbd-hint" style="margin:-6px 0 14px">Det er et krav i strålebeskyttelseslovgivningen, at en DEXA-scanning skal være berettiget. Dine svar læses kun af klinikkens sundhedspersonale.</p>
-				<fieldset><legend>Hvad er formålet med scanningen?</legend>
-					<label class="opt"><input type="radio" name="nbd_f" value="kost"> Kostomlægning eller vægttab</label>
-					<label class="opt"><input type="radio" name="nbd_f" value="sport"> Optimering af sportspræstation</label>
-					<label class="opt"><input type="radio" name="nbd_f" value="opf"> Opfølgning efter sygdom eller behandling</label>
-					<label class="opt"><input type="radio" name="nbd_f" value="andet"> Andet</label>
-				</fieldset>
-				<fieldset><legend>Er du gravid?</legend>
-					<label class="opt"><input type="radio" name="nbd_g" value="nej"> Nej</label>
-					<label class="opt"><input type="radio" name="nbd_g" value="ja"> Ja</label>
-					<div class="nbd-stop" data-stop="g" hidden>DEXA-scanning udføres ikke på gravide. Ring til os på <?php echo esc_html( $s['phone'] ); ?>, hvis du har spørgsmål.</div>
-				</fieldset>
-				<fieldset><legend>Er du over 197 cm eller over 159 kg?</legend>
-					<label class="opt"><input type="radio" name="nbd_h" value="nej"> Nej</label>
-					<label class="opt"><input type="radio" name="nbd_h" value="ja"> Ja</label>
-					<div class="nbd-stop" data-stop="h" hidden>Scanneren giver et præcist resultat op til 197 cm og 159 kg. Kontakt os, så finder vi den rigtige løsning.</div>
-				</fieldset>
-				<div class="fld"><label for="nbd-x">Er der andet, lægen bør vide? (valgfrit)</label><textarea id="nbd-x" rows="3" maxlength="1000"></textarea><span class="nbd-hint">Skriv kun det nødvendige.</span></div>
-			</section>
-			<section class="nbd-pane" data-p="2" hidden>
 				<h2>Vælg tid</h2>
 				<div class="nbd-cal">
 					<div>
@@ -80,19 +61,42 @@ add_shortcode( 'nordic_booking', function () {
 					</div>
 				</div>
 			</section>
-			<section class="nbd-pane" data-p="3" hidden>
+			<section class="nbd-pane" data-p="2" hidden>
 				<h2>Dine oplysninger</h2>
 				<div class="fld"><label for="nbd-n">Navn</label><input id="nbd-n" type="text" autocomplete="name" maxlength="190"></div>
 				<div class="fld"><label for="nbd-e">E-mail</label><input id="nbd-e" type="email" autocomplete="email" maxlength="190"></div>
 				<div class="fld"><label for="nbd-t">Telefon</label><input id="nbd-t" type="tel" autocomplete="tel" maxlength="20"></div>
 				<div class="nbd-hp" aria-hidden="true"><label>Lad dette felt stå tomt <input id="nbd-hp" type="text" tabindex="-1" autocomplete="off"></label></div>
-				<label class="opt"><input type="checkbox" id="nbd-ok"> <span>Jeg har læst <?php echo $terms; // phpcs:ignore ?> samt <?php echo $priv; // phpcs:ignore ?>.</span></label>
+				<div class="nbd-info" style="background:var(--bg2)"><b>Før du betaler:</b> DEXA-scanning udføres ikke på gravide. Scanneren giver et præcist resultat op til 197 cm og 159 kg. Efter betalingen udfylder du et kort spørgeskema, som en læge gennemgår.</div>
+				<label class="opt" style="margin-top:12px"><input type="checkbox" id="nbd-ok"> <span>Jeg har læst <?php echo $terms; // phpcs:ignore ?> samt <?php echo $priv; // phpcs:ignore ?>.</span></label>
 			</section>
-			<section class="nbd-pane" data-p="4" hidden>
+			<section class="nbd-pane" data-p="3" hidden>
 				<h2>Betaling</h2>
 				<p>Du sendes videre til en sikker betalingsside hos Stripe, hvor du kan betale med kort eller MobilePay.</p>
-				<div class="nbd-info">Beløbet trækkes nu. En læge gennemgår herefter din visitation. <b>Kan scanningen ikke godkendes, refunderer vi hele beløbet.</b></div>
+				<div class="nbd-info">Beløbet trækkes nu. Bagefter udfylder du et kort spørgeskema, og en læge vurderer, om scanningen er berettiget. <b>Kan scanningen ikke godkendes, refunderer vi hele beløbet.</b></div>
 				<p class="nbd-hint">Kortoplysninger indtastes kun hos Stripe og gemmes aldrig hos os. Tiden holdes til dig i 30 minutter, mens du betaler.</p>
+			</section>
+			<section class="nbd-pane" data-p="4" hidden>
+				<h2>Kort visitation</h2>
+				<p class="nbd-ok-pay" id="nbd-paid" hidden>Tak - din betaling er modtaget. Udfyld spørgeskemaet, så lægen kan godkende din scanning.</p>
+				<p class="nbd-hint" style="margin:0 0 14px">Det er et krav i strålebeskyttelseslovgivningen, at en DEXA-scanning skal være berettiget. Dine svar læses kun af klinikkens sundhedspersonale.</p>
+				<fieldset><legend>Hvad er formålet med scanningen?</legend>
+					<label class="opt"><input type="radio" name="nbd_f" value="kost"> Kostomlægning eller vægttab</label>
+					<label class="opt"><input type="radio" name="nbd_f" value="sport"> Optimering af sportspræstation</label>
+					<label class="opt"><input type="radio" name="nbd_f" value="opf"> Opfølgning efter sygdom eller behandling</label>
+					<label class="opt"><input type="radio" name="nbd_f" value="andet"> Andet</label>
+				</fieldset>
+				<fieldset><legend>Er du gravid?</legend>
+					<label class="opt"><input type="radio" name="nbd_g" value="nej"> Nej</label>
+					<label class="opt"><input type="radio" name="nbd_g" value="ja"> Ja</label>
+					<div class="nbd-stop" data-stop="g" hidden>DEXA-scanning udføres ikke på gravide. Send gerne svaret alligevel: lægen kontakter dig, og du får hele beløbet refunderet.</div>
+				</fieldset>
+				<fieldset><legend>Er du over 197 cm eller over 159 kg?</legend>
+					<label class="opt"><input type="radio" name="nbd_h" value="nej"> Nej</label>
+					<label class="opt"><input type="radio" name="nbd_h" value="ja"> Ja</label>
+					<div class="nbd-stop" data-stop="h" hidden>Scanneren giver et præcist resultat op til 197 cm og 159 kg. Lægen kontakter dig om den rigtige løsning.</div>
+				</fieldset>
+				<div class="fld"><label for="nbd-x">Er der andet, lægen bør vide? (valgfrit)</label><textarea id="nbd-x" rows="3" maxlength="1000"></textarea><span class="nbd-hint">Skriv kun det nødvendige.</span></div>
 			</section>
 			<div class="nbd-err" id="nbd-err" role="alert" hidden></div>
 			<div class="nbd-btns">
@@ -105,7 +109,7 @@ add_shortcode( 'nordic_booking', function () {
 			<dl>
 				<div><dt>Tid</dt><dd id="nbd-st">Ikke valgt</dd></div>
 				<div><dt>Sted</dt><dd><?php echo nl2br( esc_html( $s['address'] ) ); ?></dd></div>
-				<div><dt>Varighed</dt><dd>Scanningen tager cirka 10 minutter</dd></div>
+				<div><dt>Varighed</dt><dd>Selve scanningen tager 10-20 minutter</dd></div>
 			</dl>
 			<p class="nbd-pay">Betaling med kort eller MobilePay via Stripe.</p>
 		</aside>

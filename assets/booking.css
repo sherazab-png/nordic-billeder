@@ -56,3 +56,5 @@
 .nbd-err{background:#FDECEC;border:1px solid #E7B4B4;border-radius:8px;padding:10px 12px;font-size:14px;margin:10px 0}
 .nbd-hp{position:absolute!important;left:-9999px!important;width:1px;height:1px;overflow:hidden}
 .nbd-load{opacity:.5;pointer-events:none}
+.nbd-ok-pay{background:#E6F4EC;border-radius:10px;padding:12px 14px;font-weight:600;margin:0 0 12px}
+@media(max-width:520px){.nbd-steps li.on{font-size:12px;padding:8px 6px}.nbd-steps li.on:before{margin-right:4px}}

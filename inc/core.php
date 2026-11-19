@@ -14,9 +14,10 @@ function nb_settings() {
 		'clinic_email' => 'info@nordicspecialhospital.dk',
 		'address'      => "Nordic DEXA Scan\nLaurits Olsens vej 1, 1. sal\n2650 Hvidovre",
 		'phone'        => '77 34 00 36',
-		'cancel_text'  => '[Afbestillingsregler indsættes efter godkendelse.]',
+		'cancel_text'  => 'Afbestilling skal ske senest 48 timer før din tid.',
 		'terms_url'    => '',
 		'privacy_url'  => '',
+		'page_url'     => '',
 	);
 	return wp_parse_args( (array) get_option( 'nb_settings', array() ), $d );
 }
@@ -48,6 +49,7 @@ function nb_activate() {
 		email VARCHAR(190) NOT NULL,
 		phone VARCHAR(40) NOT NULL,
 		visit MEDIUMTEXT NULL,
+		visit_at DATETIME NULL,
 		amount INT UNSIGNED NOT NULL,
 		currency CHAR(3) NOT NULL,
 		session_id VARCHAR(255) NULL,
@@ -203,7 +205,7 @@ function nb_mark_paid( $b, $session ) {
 		}
 	}
 	$nb = nb_transition( $b, array( 'hold', 'expired' ), 'paid', array( 'pi_id' => $pi, 'paid_at' => nb_now(), 'purge_after' => $purge ) );
-	if ( $nb ) { nb_fix_slot( $nb ); nb_mail_paid( $nb ); nb_mail_clinic_new( $nb ); }
+	if ( $nb ) { nb_fix_slot( $nb ); nb_mail_paid( $nb ); if ( $nb->visit_at ) { nb_mail_clinic_new( $nb ); } }
 	return $nb ?: nb_get( 'id', $b->id );
 }
 
