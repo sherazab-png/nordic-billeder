@@ -749,6 +749,22 @@ function nordic_imp_run( $op, &$st ) {
 		$o['epro_version'] = defined( 'ELEMENTOR_PRO_VERSION' ) ? ELEMENTOR_PRO_VERSION : null;
 		return array( 'summary' => $o );
 	}
+	if ( 'bkplug' === $fn ) {
+		// Kopiér plugin-mapper til en backup uden for public_html (før opdatering).
+		$dst = dirname( untrailingslashit( ABSPATH ) ) . '/nordic-bk/' . preg_replace( '/[^0-9a-z_-]/i', '', $op['tag'] );
+		$cp = function ( $a, $b ) use ( &$cp ) {
+			if ( is_dir( $a ) ) { if ( ! is_dir( $b ) && ! mkdir( $b, 0755, true ) ) { return false; } foreach ( array_diff( scandir( $a ), array( '.', '..' ) ) as $f ) { if ( ! $cp( $a . '/' . $f, $b . '/' . $f ) ) { return false; } } return true; }
+			return copy( $a, $b );
+		};
+		$o = array( 'dst' => $dst );
+		foreach ( (array) $op['plugins'] as $p ) {
+			$p = sanitize_key( $p );
+			if ( ! is_dir( WP_PLUGIN_DIR . '/' . $p ) ) { $o[ $p ] = 'findes ikke'; continue; }
+			$d = get_file_data( WP_PLUGIN_DIR . '/' . $p . '/' . $p . '.php', array( 'v' => 'Version' ) );
+			$o[ $p ] = ( $cp( WP_PLUGIN_DIR . '/' . $p, $dst . '/' . $p ) ? 'ok ' : 'FEJL ' ) . $d['v'];
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
