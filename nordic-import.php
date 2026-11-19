@@ -919,6 +919,46 @@ function nordic_imp_run( $op, &$st ) {
 		$o['test_removed'] = ! file_exists( $tf );
 		return array( 'summary' => $o );
 	}
+	if ( 'devsetup' === $fn ) {
+		// Kun testkopien: konfiguration, aktivering af booking-plugin, testside og fejllog.
+		global $wpdb; $np = $op['prefix']; $dst = '/home/' . $op['user'] . '/domains/dev.' . preg_replace( '/[^a-z0-9.-]/', '', $op['domain'] ) . '/public_html';
+		if ( $np === $wpdb->prefix || ! preg_match( '/^[a-z]{2,4}_$/', $np ) || ! is_dir( $dst ) ) { return array( 'error' => 'ugyldig' ); }
+		$o = array();
+		if ( ! empty( $op['config'] ) ) {
+			$c = file_get_contents( $dst . '/wp-config.php' );
+			foreach ( (array) $op['config'] as $k => $v ) {
+				if ( false === strpos( $c, "'" . $k . "'" ) ) { $c = preg_replace( '/<\?php\s*/', "<?php\ndefine( '" . $k . "', " . var_export( $v, true ) . " );\n", $c, 1 ); $o['cfg'][] = $k; }
+			}
+			file_put_contents( $dst . '/wp-config.php', $c );
+		}
+		if ( ! empty( $op['activate'] ) ) {
+			$ap = maybe_unserialize( $wpdb->get_var( "SELECT option_value FROM `{$np}options` WHERE option_name='active_plugins'" ) );
+			$ap = is_array( $ap ) ? $ap : array();
+			if ( ! in_array( $op['activate'], $ap, true ) ) { $ap[] = $op['activate']; sort( $ap ); $wpdb->update( $np . 'options', array( 'option_value' => serialize( $ap ) ), array( 'option_name' => 'active_plugins' ) ); }
+			$o['active'] = $ap;
+		}
+		if ( ! empty( $op['page'] ) ) {
+			$id = $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM `{$np}posts` WHERE post_name=%s AND post_type='page'", $op['page']['slug'] ) );
+			if ( ! $id ) {
+				$now = current_time( 'mysql' ); $g = current_time( 'mysql', 1 );
+				$wpdb->insert( $np . 'posts', array( 'post_author' => 1, 'post_date' => $now, 'post_date_gmt' => $g, 'post_modified' => $now, 'post_modified_gmt' => $g, 'post_content' => $op['page']['content'], 'post_title' => $op['page']['title'], 'post_excerpt' => '', 'post_status' => 'publish', 'comment_status' => 'closed', 'ping_status' => 'closed', 'post_name' => $op['page']['slug'], 'to_ping' => '', 'pinged' => '', 'post_content_filtered' => '', 'post_type' => 'page', 'guid' => '' ) );
+				$id = $wpdb->insert_id;
+			}
+			$o['page'] = (int) $id;
+		}
+		if ( ! empty( $op['rm'] ) ) { foreach ( (array) $op['rm'] as $f ) { $p = $dst . '/' . ltrim( $f, '/' ); if ( false === strpos( $f, '..' ) && file_exists( $p ) ) { $o['rm'][ $f ] = @unlink( $p ); } } }
+		if ( ! empty( $op['sql'] ) ) {
+			foreach ( (array) $op['sql'] as $i => $q ) {
+				$q = str_replace( '{p}', $np, $q );
+				if ( ! preg_match( '/^\s*SELECT\b/i', $q ) || preg_match( '/;/', $q ) ) { $o[ 'sql' . $i ] = 'afvist'; continue; }
+				$o[ 'sql' . $i ] = $wpdb->get_results( $q, ARRAY_A );
+			}
+		}
+		$log = $dst . '/wp-content/debug.log';
+		$o['debug'] = file_exists( $log ) ? substr( (string) file_get_contents( $log ), -4000 ) : '';
+		if ( ! empty( $op['clearlog'] ) && file_exists( $log ) ) { file_put_contents( $log, '' ); }
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
