@@ -84,7 +84,7 @@ function nb_mail_clinic_answers( $b ) {
 	$v = nb_decrypt( $b->visit ); if ( ! $v ) { return false; }
 	add_filter( 'fluentmail_will_log_email', '__return_false', 999 );
 	$ok = wp_mail( $s['clinic_email'], 'Svar modtaget: booking ' . nb_local( $b->starts_utc, 'd.m.Y H:i' ) . ' - ' . $b->name,
-		"SUPPLERENDE SPØRGSMÅL\nFormål: " . ( $f[ $v['formaal'] ] ?? $v['formaal'] ) . "\nGravid: " . $v['gravid'] . "\nOver 197 cm eller 159 kg: " . $v['graense'] . "\nBemærkning: " . ( '' !== $v['note'] ? $v['note'] : '(ingen)' ) . "\n\nGodkend eller afvis:\n" . admin_url( 'admin.php?page=nb-bookings&b=' . (int) $b->id ) . "\n\nFORTROLIGT: indeholder helbredsoplysninger.", array( 'Content-Type: text/plain; charset=UTF-8' ) );
+		"SUPPLERENDE SPØRGSMÅL\nFormål: " . ( $f[ $v['formaal'] ] ?? $v['formaal'] ) . "\nGravid: " . $v['gravid'] . "\nOver 197 cm eller 159 kg: " . $v['graense'] . "\nBemærkning: " . ( '' !== $v['note'] ? $v['note'] : '(ingen)' ) . ( 'ja' === $v['gravid'] || 'ja' === $v['graense'] ? "\n\nOBS: Svarene kræver lægefaglig opfølgning før scanningen." : '' ) . "\n\nGodkend eller afvis:\n" . admin_url( 'admin.php?page=nb-bookings&b=' . (int) $b->id ) . "\n\nFORTROLIGT: indeholder helbredsoplysninger.", array( 'Content-Type: text/plain; charset=UTF-8' ) );
 	remove_filter( 'fluentmail_will_log_email', '__return_false', 999 );
 	nb_log( $b->id, $ok ? 'mail_ok' : 'mail_fejl', 'klinik svar' );
 	return $ok;
