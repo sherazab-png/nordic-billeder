@@ -2,7 +2,7 @@
 	'use strict';
 	var R = document.getElementById('nbd');
 	if (!R || !window.NB) { return; }
-	// Trin: 1 tid, 2 oplysninger, 3 betaling, 4 visitation (efter betaling).
+	// Trin: 1 tid, 2 oplysninger, 3 betaling, 4 supplerende spørgsmål (efter betaling).
 	var step = 1, sel = { slot: null, date: null, time: null }, view = new Date(), slots = {}, busy = false, ref = null;
 	view.setDate(1);
 	var MON = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
@@ -32,7 +32,7 @@
 		qa('.nbd-steps li').forEach(function (l) { var s = +l.dataset.s; l.className = s === step ? 'on' : (s < step ? 'done' : ''); });
 		q('#nbd-back').hidden = step === 1 || step === 4;
 		var n = q('#nbd-next');
-		n.textContent = step === 3 ? 'Gå til betaling' : (step === 4 ? 'Send spørgeskema' : 'Videre');
+		n.textContent = step === 3 ? 'Gå til betaling' : (step === 4 ? 'Send svar' : 'Videre');
 		n.disabled = !valid();
 	}
 	function load() {
@@ -85,11 +85,11 @@
 				busy = false;
 				if (x.ok) {
 					result('Tak - din booking er modtaget', x.j.flag
-						? 'Vi har modtaget dit spørgeskema. Ud fra dine svar kan scanningen sandsynligvis ikke gennemføres som planlagt. En læge kontakter dig, og kan scanningen ikke udføres, refunderer vi hele beløbet.'
-						: 'Vi har modtaget dit spørgeskema. En læge gennemgår det, og du får en bekræftelse på e-mail. Kan scanningen ikke godkendes, refunderer vi hele beløbet.');
+						? 'Vi har modtaget dine svar. Ud fra svarene kan scanningen sandsynligvis ikke gennemføres som planlagt. En læge kontakter dig, og kan scanningen ikke udføres, refunderer vi hele beløbet.'
+						: 'Vi har modtaget dine svar. En læge gennemgår dem, og du får en bekræftelse på e-mail. Kan scanningen ikke godkendes, refunderer vi hele beløbet.');
 					return;
 				}
-				err((x.j && x.j.message) || 'Spørgeskemaet kunne ikke sendes. Prøv igen, eller ring til os.'); show();
+				err((x.j && x.j.message) || 'Svarene kunne ikke sendes. Prøv igen, eller ring til os.'); show();
 			}).catch(function () { busy = false; err('Forbindelsen fejlede. Prøv igen.'); show(); });
 	}
 
@@ -117,7 +117,7 @@
 		var tries = 0;
 		(function poll() {
 			fetch(NB.api + 'status?ref=' + encodeURIComponent(ref) + '&_=' + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
-				if (j.visit) { result('Tak - vi har dit spørgeskema', 'Din tid ' + j.when + ' er registreret. Du får en bekræftelse på e-mail, når lægen har godkendt scanningen.'); return; }
+				if (j.visit) { result('Tak - vi har dine svar', 'Din tid ' + j.when + ' er registreret. Du får en bekræftelse på e-mail, når lægen har godkendt scanningen.'); return; }
 				if (j.status === 'paid') {
 					toVisit(j, true);
 					if (st === 'ok') { try { if (window.gtag) { window.gtag('event', 'booking_completed'); } } catch (x) {} }

@@ -49,7 +49,7 @@
 .nbd-row b{font-size:22px;color:var(--s)}
 .nbd-pay{font-size:13px;color:var(--m);margin-top:10px}
 .nbd-info{background:#E6F4EC;border-radius:10px;padding:12px 14px;font-size:14px;margin-top:14px}
-.nbd-faq{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px;font-size:14px}
+.nbd-faq{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:22px;font-size:14px}
 .nbd-faq p{margin:0;color:var(--m)}
 @media(max-width:900px){.nbd-hero,.nbd-main,.nbd-cal,.nbd-faq{grid-template-columns:1fr}.nbd-sum{position:static}}
 @media(max-width:520px){.nbd-steps li{font-size:0;padding:8px 4px}.nbd-steps li:before{margin:0;font-size:12px}.nbd-times{grid-template-columns:repeat(3,1fr)}.nbd-box{padding:16px}.nbd-btns .b{flex:1}}

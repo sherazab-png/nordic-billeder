@@ -96,7 +96,7 @@ function nb_rest_visit( WP_REST_Request $r ) {
 	$p = (array) $r->get_json_params();
 	$b = nb_get( 'ref', (string) ( $p['ref'] ?? '' ) );
 	if ( ! $b ) { return nb_err( 'nb_nf', 'Ukendt booking', 404 ); }
-	if ( $b->visit_at ) { return nb_err( 'nb_done', 'Spørgeskemaet er allerede modtaget. Ring til os, hvis du vil rette noget.', 409 ); }
+	if ( $b->visit_at ) { return nb_err( 'nb_done', 'Dine svar er allerede modtaget. Ring til os, hvis du vil rette noget.', 409 ); }
 	if ( ! in_array( $b->status, array( 'hold', 'paid' ), true ) ) { return nb_err( 'nb_state', 'Bookingen er ikke aktiv.', 409 ); }
 	$v = (array) ( $p['visit'] ?? array() );
 	$formaal = (string) ( $v['formaal'] ?? '' );
@@ -106,7 +106,7 @@ function nb_rest_visit( WP_REST_Request $r ) {
 	$enc = nb_encrypt( array( 'formaal' => $formaal, 'gravid' => $gravid, 'graense' => $graense, 'note' => $note, 'v' => 2 ) );
 	if ( false === $enc ) { return nb_err( 'nb_off', 'Teknisk fejl. Ring til os.', 503 ); }
 	$n = $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET visit=%s, visit_at=%s, updated_at=%s WHERE id=%d AND visit_at IS NULL', $enc, nb_now(), nb_now(), $b->id ) );
-	if ( 1 !== (int) $n ) { return nb_err( 'nb_done', 'Spørgeskemaet er allerede modtaget.', 409 ); }
+	if ( 1 !== (int) $n ) { return nb_err( 'nb_done', 'Dine svar er allerede modtaget.', 409 ); }
 	nb_log( $b->id, 'visit', 'modtaget' );
 	$b = nb_get( 'id', $b->id );
 	if ( 'paid' === $b->status ) { nb_mail_clinic_new( $b ); }
@@ -171,6 +171,8 @@ function nb_rest_mock_tool( WP_REST_Request $r ) {
 	global $wpdb;
 	$p = (array) $r->get_json_params(); $act = (string) ( $p['act'] ?? '' );
 	if ( 'age' === $act ) { return array( 'n' => $wpdb->query( 'UPDATE ' . nb_t( 'slots' ) . ' SET held_until=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 HOUR) WHERE held_until IS NOT NULL' ) ); }
+	if ( 'agepaid' === $act ) { return array( 'n' => $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET paid_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 25 HOUR) WHERE ref=%s', (string) ( $p['ref'] ?? '' ) ) ) ); }
+	if ( 'remind' === $act ) { nb_remind(); return array( 'ok' => 1 ); }
 	if ( 'cron' === $act ) { nb_cleanup_holds(); nb_purge(); return array( 'ok' => 1 ); }
 	if ( 'replay' === $act ) { $l = get_option( 'nb_mock_last' ); return $l ? nb_webhook_process( $l['payload'], $l['sig'] ) : array(); }
 	if ( 'badsig' === $act ) { $l = get_option( 'nb_mock_last' ); return $l ? nb_webhook_process( $l['payload'], 't=' . time() . ',v1=' . str_repeat( 'a', 64 ) ) : array(); }
@@ -182,7 +184,7 @@ function nb_rest_mock_tool( WP_REST_Request $r ) {
 		if ( ! $b ) { return array(); }
 		$slot = $wpdb->get_row( $wpdb->prepare( 'SELECT booking_id, held_until FROM ' . nb_t( 'slots' ) . ' WHERE id=%d', $b->slot_id ), ARRAY_A );
 		$v = nb_decrypt( $b->visit );
-		return array( 'status' => $b->status, 'refunded' => (int) $b->refunded, 'mail' => $b->mail_state, 'pi' => (bool) $b->pi_id, 'slot' => $slot, 'visit_at' => $b->visit_at, 'visit_encrypted' => 0 === strpos( (string) $b->visit, 'v1:' ), 'visit_readable' => is_array( $v ), 'visit' => $v, 'log' => $wpdb->get_col( $wpdb->prepare( 'SELECT CONCAT(action, " ", detail) FROM ' . nb_t( 'log' ) . ' WHERE booking_id=%d ORDER BY id', $b->id ) ) );
+		return array( 'status' => $b->status, 'refunded' => (int) $b->refunded, 'mail' => $b->mail_state, 'pi' => (bool) $b->pi_id, 'slot' => $slot, 'visit_at' => $b->visit_at, 'reminded_at' => $b->reminded_at, 'visit_encrypted' => 0 === strpos( (string) $b->visit, 'v1:' ), 'visit_readable' => is_array( $v ), 'visit' => $v, 'log' => $wpdb->get_col( $wpdb->prepare( 'SELECT CONCAT(action, " ", detail) FROM ' . nb_t( 'log' ) . ' WHERE booking_id=%d ORDER BY id', $b->id ) ) );
 	}
 	if ( 'refs' === $act ) { return $wpdb->get_results( 'SELECT ref, status, starts_utc FROM ' . nb_t( 'bookings' ) . ' ORDER BY id DESC LIMIT 10', ARRAY_A ); }
 	if ( in_array( $act, array( 'approve', 'reject', 'cancel', 'complete', 'resend', 'retry_refund' ), true ) ) {
