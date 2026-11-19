@@ -972,6 +972,16 @@ function nordic_imp_run( $op, &$st ) {
 		if ( ! empty( $op['clearlog'] ) && file_exists( $log ) ) { file_put_contents( $log, '' ); }
 		return array( 'summary' => $o );
 	}
+	if ( 'smtpinfo' === $fn ) {
+		// Kun læsning: hvordan sender sitet e-mail (FluentSMTP), uden adgangskoder.
+		$s = get_option( 'fluentmail-settings' ); $o = array();
+		foreach ( (array) ( $s['connections'] ?? array() ) as $k => $c ) {
+			$p = (array) ( $c['provider_settings'] ?? array() );
+			$o['conn'][ $k ] = array_intersect_key( $p, array_flip( array( 'provider', 'sender_email', 'host', 'port', 'encryption', 'auth', 'force_from_email', 'sender_name' ) ) );
+		}
+		$o['mappings'] = $s['mappings'] ?? null; $o['misc'] = array_intersect_key( (array) ( $s['misc'] ?? array() ), array_flip( array( 'default_connection', 'fallback_connection' ) ) );
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
