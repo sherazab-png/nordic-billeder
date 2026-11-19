@@ -883,6 +883,26 @@ function nordic_imp_run( $op, &$st ) {
 		foreach ( array( 'const STORE_URL', 'const BASE_URL', 'function remote_post', 'function get_version' ) as $k ) { $i = strpos( $src, $k ); $o[ $k ] = false === $i ? null : substr( $src, $i, 900 ); }
 		return array( 'summary' => $o );
 	}
+	if ( 'devscrub' === $fn ) {
+		// Fjern persondata fra testkopiens tabeller (kun tabeller med testpræfikset).
+		global $wpdb; $np = $op['prefix']; $o = array();
+		if ( $np === $wpdb->prefix || ! preg_match( '/^[a-z]{2,4}_$/', $np ) ) { return array( 'error' => 'ugyldigt praefiks' ); }
+		foreach ( array( 'fluentform_submissions', 'fluentform_entry_details', 'fluentform_submission_meta', 'fluentform_logs', 'frm_items', 'frm_item_metas', 'fsmpt_email_logs', 'e_submissions', 'e_submissions_values', 'e_submissions_actions_log', 'comments', 'commentmeta', 'actionscheduler_logs' ) as $t ) {
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $np . $t ) ) ) { $wpdb->query( "TRUNCATE TABLE `{$np}{$t}`" ); $o[] = $np . $t; }
+		}
+		return array( 'summary' => $o );
+	}
+	if ( 'eprohttp' === $fn ) {
+		// Kun læsning: kald Elementors get_version direkte og vis statuskode og svar (licensnøglen vises ikke).
+		$key = (string) get_option( 'elementor_pro_license_key' );
+		$r = wp_remote_post( 'https://my.elementor.com/api/v2/pro/get_version', array( 'timeout' => 40, 'body' => array( 'api_version' => ELEMENTOR_PRO_VERSION, 'item_name' => 'Elementor Pro', 'site_lang' => get_bloginfo( 'language' ), 'url' => home_url(), 'license' => $key, 'beta' => 'no' ) ) );
+		if ( is_wp_error( $r ) ) { return array( 'summary' => array( 'wp_error' => $r->get_error_message() ) ); }
+		$b = wp_remote_retrieve_body( $r );
+		$b = str_replace( $key, '[NØGLE]', $b );
+		$j = json_decode( $b, true );
+		if ( is_array( $j ) ) { foreach ( array( 'package', 'download_link' ) as $k ) { if ( ! empty( $j[ $k ] ) ) { $j[ $k ] = '[link findes]'; } } unset( $j['sections'] ); }
+		return array( 'summary' => array( 'code' => wp_remote_retrieve_response_code( $r ), 'body' => is_array( $j ) ? $j : substr( $b, 0, 400 ), 'lock' => get_option( '_elementor_pro_api_requests_lock' ) ) );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
