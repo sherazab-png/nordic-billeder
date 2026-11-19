@@ -8,6 +8,11 @@ add_action( 'send_headers', function () { header( 'X-Robots-Tag: noindex, nofoll
 add_filter( 'pre_option_blog_public', function () { return '0'; } );
 add_action( 'init', function () {
 	if ( wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) || is_user_logged_in() ) { return; }
+	// Testadgang uden login (kun til automatiske tests): ?nordic_dev=<kode> sætter en cookie i 8 timer.
+	if ( defined( 'NORDIC_DEV_PASS' ) && NORDIC_DEV_PASS ) {
+		if ( isset( $_GET['nordic_dev'] ) && hash_equals( NORDIC_DEV_PASS, (string) $_GET['nordic_dev'] ) ) { setcookie( 'nordic_dev', hash_hmac( 'sha256', 'ok', NORDIC_DEV_PASS ), time() + 8 * 3600, '/', '', true, true ); return; }
+		if ( isset( $_COOKIE['nordic_dev'] ) && hash_equals( hash_hmac( 'sha256', 'ok', NORDIC_DEV_PASS ), (string) $_COOKIE['nordic_dev'] ) ) { return; }
+	}
 	$u = (string) ( $_SERVER['REQUEST_URI'] ?? '' );
 	if ( preg_match( '#^/(wp-login\.php|wp-admin/admin-ajax\.php|wp-json/nordic-booking/)#', $u ) || false !== strpos( $u, 'nordic_import=1' ) ) { return; }
 	if ( is_admin() ) { return; }

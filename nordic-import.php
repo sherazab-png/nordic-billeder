@@ -946,6 +946,8 @@ function nordic_imp_run( $op, &$st ) {
 			}
 			$o['page'] = (int) $id;
 		}
+		if ( ! empty( $op['mu'] ) ) { $o['mu'] = copy( __DIR__ . '/dev/nordic-dev-laas.php', $dst . '/wp-content/mu-plugins/nordic-dev-laas.php' ); }
+		if ( ! empty( $op['cfgrepl'] ) ) { $c = file_get_contents( $dst . '/wp-config.php' ); foreach ( (array) $op['cfgrepl'] as $r ) { $c = str_replace( $r[0], $r[1], $c, $n ); $o['cfgrepl'][] = $n; } file_put_contents( $dst . '/wp-config.php', $c ); }
 		if ( ! empty( $op['rm'] ) ) { foreach ( (array) $op['rm'] as $f ) { $p = $dst . '/' . ltrim( $f, '/' ); if ( false === strpos( $f, '..' ) && file_exists( $p ) ) { $o['rm'][ $f ] = @unlink( $p ); } } }
 		if ( ! empty( $op['sql'] ) ) {
 			foreach ( (array) $op['sql'] as $i => $q ) {
