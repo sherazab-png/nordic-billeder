@@ -714,6 +714,19 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'kokoq' === $fn ) {
+		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
+		global $wpdb; $o = array( 'tables' => array() );
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'koko' ) . '%' ) ) as $tb ) { $o['tables'][ $tb ] = $wpdb->get_col( "SHOW COLUMNS FROM `$tb`" ); }
+		foreach ( (array) ( $op['q'] ?? array() ) as $i => $sql ) {
+			$sql = str_replace( '{p}', $wpdb->prefix, $sql );
+			if ( ! preg_match( '/^\s*SELECT\b/i', $sql ) || preg_match( '/;|\b(insert|update|delete|drop|alter|create|replace|grant|into)\b/i', $sql ) ) { $o[ 'q' . $i ] = 'afvist'; continue; }
+			preg_match_all( '/(?:from|join)\s+`?([a-z0-9_]+)/i', $sql, $m );
+			$ok = true; foreach ( $m[1] as $tb ) { if ( 0 !== strpos( $tb, $wpdb->prefix . 'koko' ) ) { $ok = false; } }
+			$o[ 'q' . $i ] = $ok ? $wpdb->get_results( $sql, ARRAY_A ) : 'afvist';
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'eltree' === $fn ) {
 		// Kompakt elementtræ med type, tekst og links for de angivne indlæg (kun læsning).
 		$o = array();
