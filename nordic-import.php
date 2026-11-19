@@ -798,7 +798,9 @@ function nordic_imp_run( $op, &$st ) {
 		$o = array( 'before' => get_plugin_data( WP_PLUGIN_DIR . '/' . $file, false, false )['Version'] );
 		if ( ! class_exists( '\ElementorPro\License\API' ) ) { return array( 'error' => 'API-klasse mangler' ); }
 		$v = \ElementorPro\License\API::get_version( false );
-		if ( is_wp_error( $v ) ) { return array( 'error' => $v->get_error_message() ); }
+		if ( is_wp_error( $v ) ) { return array( 'summary' => array( 'wperr' => $v->get_error_codes(), 'msg' => $v->get_error_messages(), 'data' => $v->get_error_data() ) ); }
+		if ( ! is_array( $v ) ) { return array( 'summary' => array( 'raw' => $v ) ); }
+		$o['keys'] = array_keys( $v );
 		$o['new_version'] = $v['new_version'] ?? null;
 		$pkg = $v['package'] ?? ( $v['download_link'] ?? '' );
 		$o['has_package'] = (bool) $pkg;
