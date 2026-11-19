@@ -788,6 +788,31 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'eproupd' === $fn ) {
+		// Elementor Pro: hent version og pakke via Elementors licens-API (licensen er gyldig), opdater hvis nyere.
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		$file = 'elementor-pro/elementor-pro.php';
+		$o = array( 'before' => get_plugin_data( WP_PLUGIN_DIR . '/' . $file, false, false )['Version'] );
+		if ( ! class_exists( '\ElementorPro\License\API' ) ) { return array( 'error' => 'API-klasse mangler' ); }
+		$v = \ElementorPro\License\API::get_version( false );
+		if ( is_wp_error( $v ) ) { return array( 'error' => $v->get_error_message() ); }
+		$o['new_version'] = $v['new_version'] ?? null;
+		$pkg = $v['package'] ?? ( $v['download_link'] ?? '' );
+		$o['has_package'] = (bool) $pkg;
+		if ( ! empty( $op['go'] ) && $pkg && version_compare( $o['new_version'], $o['before'], '>' ) ) {
+			$up = new Plugin_Upgrader( new Automatic_Upgrader_Skin() );
+			$r = $up->run( array( 'package' => $pkg, 'destination' => WP_PLUGIN_DIR, 'clear_destination' => true, 'clear_working' => true, 'hook_extra' => array( 'plugin' => $file, 'type' => 'plugin', 'action' => 'update' ) ) );
+			$o['result'] = is_wp_error( $r ) ? $r->get_error_message() : ( is_array( $r ) ? 'ok' : $r );
+			$o['messages'] = $up->skin->get_upgrade_messages();
+			wp_clean_plugins_cache();
+			$o['after'] = get_plugin_data( WP_PLUGIN_DIR . '/' . $file, false, false )['Version'];
+			$o['active'] = is_plugin_active( $file );
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
