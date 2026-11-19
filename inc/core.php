@@ -222,7 +222,8 @@ function nb_refund( $b, $amount, $reason ) {
 	$n = (int) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SELECT COUNT(*) FROM ' . nb_t( 'log' ) . " WHERE booking_id=%d AND action='refund'", $b->id ) );
 	$r = nb_stripe( 'POST', 'refunds', array( 'payment_intent' => $b->pi_id, 'amount' => $amt, 'metadata' => array( 'nb_ref' => $b->ref ) ), 'nb-rf-' . $b->ref . '-' . $n . '-' . $amt );
 	if ( is_wp_error( $r ) ) { nb_log( $b->id, 'refund_error', $r->get_error_message() ); return false; }
-	$GLOBALS['wpdb']->query( $GLOBALS['wpdb']->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET refunded=LEAST(amount, refunded+%d), updated_at=%s WHERE id=%d', $amt, nb_now(), $b->id ) );
+	// Kumulativt beløb (samme tal som Stripes amount_refunded), så en webhook, der når frem først, ikke giver dobbelttælling.
+	$GLOBALS['wpdb']->query( $GLOBALS['wpdb']->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET refunded=LEAST(amount, GREATEST(refunded, %d)), updated_at=%s WHERE id=%d', (int) $b->refunded + $amt, nb_now(), $b->id ) );
 	nb_log( $b->id, 'refund', $amt . ' (' . $reason . ') ' . ( $r['id'] ?? '' ) );
 	return true;
 }
