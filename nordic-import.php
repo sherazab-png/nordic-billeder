@@ -875,6 +875,14 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'error' => 'ukendt fase' );
 	}
+	if ( 'eprodiag' === $fn ) {
+		// Kun læsning: vis Elementor Pros API-kode og svar fra licensserveren (uden licensnøgle).
+		$f = WP_PLUGIN_DIR . '/elementor-pro/license/api.php';
+		$src = (string) @file_get_contents( $f );
+		$o = array();
+		foreach ( array( 'const STORE_URL', 'const BASE_URL', 'function remote_post', 'function get_version' ) as $k ) { $i = strpos( $src, $k ); $o[ $k ] = false === $i ? null : substr( $src, $i, 900 ); }
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
