@@ -724,6 +724,31 @@ function nordic_imp_run( $op, &$st ) {
 		update_post_meta( $pid, 'rank_math_robots', array( 'noindex', 'nofollow' ) );
 		return array( 'summary' => array( 'id' => $pid, 'status' => get_post_status( $pid ), 'preview' => add_query_arg( array( 'page_id' => $pid, 'preview' => 'true' ), home_url( '/' ) ) ) );
 	}
+	if ( 'seccheck' === $fn ) {
+		// Kun læsning: tjek for CVE-2026-32475 (Elementor Pro formular med filupload) og tegn på kompromittering.
+		global $wpdb;
+		$o = array();
+		$o['upload_fields'] = $wpdb->get_results( "SELECT p.ID, p.post_type, p.post_status, p.post_title FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE m.meta_value LIKE '%\"field_type\":\"upload\"%'", ARRAY_A );
+		$o['form_widgets'] = $wpdb->get_results( "SELECT p.ID, p.post_type, p.post_status, p.post_title FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE m.meta_value LIKE '%\"widgetType\":\"form\"%'", ARRAY_A );
+		$up = wp_upload_dir(); $base = $up['basedir'];
+		$o['forms_dir'] = array();
+		if ( is_dir( $base . '/elementor/forms' ) ) {
+			$it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $base . '/elementor/forms', FilesystemIterator::SKIP_DOTS ) );
+			foreach ( $it as $f ) { $o['forms_dir'][] = array( substr( $f->getPathname(), strlen( $base ) ), $f->getSize(), gmdate( 'Y-m-d H:i', $f->getMTime() ) ); if ( count( $o['forms_dir'] ) > 200 ) { break; } }
+		} else { $o['forms_dir'] = 'findes ikke'; }
+		$o['php_in_uploads'] = array();
+		$it = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $base, FilesystemIterator::SKIP_DOTS ) );
+		foreach ( $it as $f ) { if ( preg_match( '/\.(php\d?|phtml|phar|pht)$/i', $f->getFilename() ) || preg_match( '/\.php\./i', $f->getFilename() ) ) { $o['php_in_uploads'][] = array( substr( $f->getPathname(), strlen( $base ) ), $f->getSize(), gmdate( 'Y-m-d H:i', $f->getMTime() ) ); if ( count( $o['php_in_uploads'] ) > 100 ) { break; } } }
+		$o['admins'] = array_map( function ( $u ) { return array( $u->user_login, $u->user_registered ); }, get_users( array( 'role' => 'administrator' ) ) );
+		$o['users_total'] = count_users()['total_users'];
+		$o['mu_plugins'] = array_values( array_diff( (array) @scandir( WPMU_PLUGIN_DIR ), array( '.', '..' ) ) );
+		$o['wpcontent_root_php'] = array_map( 'basename', (array) glob( WP_CONTENT_DIR . '/*.php' ) );
+		$o['plugin_dirs'] = array_values( array_diff( (array) @scandir( WP_PLUGIN_DIR ), array( '.', '..' ) ) );
+		$lic = get_option( '_elementor_pro_license_v2_data' );
+		$o['epro_license'] = array( 'key_set' => (bool) get_option( 'elementor_pro_license_key' ), 'data' => is_array( $lic ) ? array_intersect_key( (array) ( is_string( $lic['value'] ?? null ) ? json_decode( $lic['value'], true ) : $lic ), array_flip( array( 'success', 'license', 'expires', 'error' ) ) ) : $lic );
+		$o['epro_version'] = defined( 'ELEMENTOR_PRO_VERSION' ) ? ELEMENTOR_PRO_VERSION : null;
+		return array( 'summary' => $o );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
