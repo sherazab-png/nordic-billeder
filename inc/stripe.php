@@ -154,6 +154,7 @@ function nb_mock_api( $method, $path, $p ) {
 		$pi = $p['payment_intent'];
 		if ( empty( $m['pi'][ $pi ] ) ) { return new WP_Error( 'nb_stripe', 'Stripe 404: No such payment_intent' ); }
 		$left = $m['pi'][ $pi ]['amount'] - $m['pi'][ $pi ]['refunded'];
+		$p['amount'] = $p['amount'] ?? $left;
 		if ( $p['amount'] > $left ) { return new WP_Error( 'nb_stripe', 'Stripe 400: Refund exceeds remaining amount' ); }
 		$m['pi'][ $pi ]['refunded'] += $p['amount'];
 		$rid = 're_mock_' . wp_generate_password( 12, false );
