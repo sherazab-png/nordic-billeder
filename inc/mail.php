@@ -110,7 +110,7 @@ function nb_mail_rejected( $b ) {
 }
 function nb_mail_cancelled( $b, $amount ) {
 	return nb_send( $b, 'cancelled', $b->email, 'Din booking er afbestilt',
-		"Hej " . $b->name . "\n\nDin booking " . nb_human( $b->starts_utc ) . " er afbestilt.\n\n" . ( $amount > 0 ? 'Vi har refunderet ' . number_format( $amount / 100, 2, ',', '.' ) . " kr. Det kan tage 5-10 bankdage, før pengene står på din konto.\n" : '' ) . "\nBookingnummer: " . $b->ref . nb_sig() );
+		"Hej " . $b->name . "\n\nDin booking " . nb_human( $b->starts_utc ) . " er afbestilt.\n\n" . ( $b->gift_id ? ( $amount > 0 ? "Beløbet for gavekortet refunderes til den, der købte det.\n" : "Dit gavekort er gyldigt igen og kan bruges til en ny booking.\n" ) : ( $amount > 0 ? 'Vi har refunderet ' . number_format( $amount / 100, 2, ',', '.' ) . " kr. Det kan tage 5-10 bankdage, før pengene står på din konto.\n" : '' ) ) . "\nBookingnummer: " . $b->ref . nb_sig() );
 }
 function nb_mail_conflict( $b ) {
 	nb_mail_admin( 'Booking-konflikt refunderet', 'En betaling kom ind, efter at tiden var givet til en anden. Betalingen er refunderet automatisk. Booking ' . $b->ref . '.' );
