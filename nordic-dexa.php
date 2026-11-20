@@ -2,12 +2,30 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.20
+ * Version: 1.21
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /* Testside til online booking (kun synlig for indloggede redaktører). */
 require_once __DIR__ . '/booking-demo.php';
+
+
+/* Engelsk side (/en/): sproglinks (hreflang) og enkel styling. */
+add_action( 'wp_head', function () {
+	$en = get_page_by_path( 'en' );
+	if ( ! $en || 'publish' !== $en->post_status ) { return; }
+	if ( is_front_page() || is_page( $en->ID ) ) {
+		echo '<link rel="alternate" hreflang="da" href="' . esc_url( home_url( '/' ) ) . '">' . "\n";
+		echo '<link rel="alternate" hreflang="en" href="' . esc_url( get_permalink( $en ) ) . '">' . "\n";
+		echo '<link rel="alternate" hreflang="x-default" href="' . esc_url( home_url( '/' ) ) . '">' . "\n";
+	}
+	if ( is_page( $en->ID ) ) {
+		echo '<style>.nds-en{max-width:960px;margin:0 auto;padding:48px 20px 64px;font-family:Manrope,system-ui,sans-serif;color:#1C2B45;line-height:1.6}.nds-en h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;color:#102A4C;font-size:clamp(36px,5vw,56px);line-height:1.05;margin:0 0 14px}.nds-en h2{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;color:#102A4C;font-size:30px;margin:36px 0 10px}.nds-en-kicker{text-transform:uppercase;letter-spacing:.08em;font-size:13px;color:#66758A;margin:0 0 8px}.nds-en-lead{font-size:18px;max-width:60ch}.nds-en-price{display:inline-block;background:#EEF4FB;border-radius:12px;padding:6px 16px;font-size:28px;font-weight:700;color:#102A4C}.nds-en-cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.nds-en-btn{display:inline-block;background:#102A4C;color:#fff!important;border-radius:999px;padding:12px 22px;font-weight:700;text-decoration:none}.nds-en-btn2{background:#fff;color:#102A4C!important;border:1px solid #102A4C}.nds-en-list{padding-left:20px}.nds-en-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}.nds-en-table th,.nds-en-table td{text-align:left;padding:10px 8px;border-bottom:1px solid #E3EAF3}.nds-en-table td:last-child,.nds-en-table th:last-child{text-align:right;white-space:nowrap}.nds-en-note{font-size:14px;color:#66758A}.nds-en a{color:#183A70}</style>' . "\n";
+	}
+}, 2 );
+
+/* WordPress laver ' - ' om til lange tankestreger ved visning. Sitet bruger almindelig bindestreg. */
+add_filter( 'run_wptexturize', '__return_false' );
 
 /* Hero-billedet på forsiden er en CSS-baggrund, som browseren først finder sent. Forudindlæs det. */
 add_action( 'wp_head', function () {
