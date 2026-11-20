@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.19
+ * Version: 1.20
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -12,7 +12,12 @@ require_once __DIR__ . '/booking-demo.php';
 /* Hero-billedet på forsiden er en CSS-baggrund, som browseren først finder sent. Forudindlæs det. */
 add_action( 'wp_head', function () {
 	if ( is_front_page() ) {
-		echo '<link rel="preload" as="image" href="' . esc_url( content_url( '/uploads/2026/10/hero_q90.webp' ) ) . '" fetchpriority="high">' . "\n";
+		// Mobil får et udsnit af hero-billedet (det synlige område), computer det fulde billede.
+		echo '<link rel="preload" as="image" href="' . esc_url( content_url( '/uploads/2026/10/hero_q90.webp' ) ) . '" media="(min-width: 768px)" fetchpriority="high">' . "\n";
+		echo '<link rel="preload" as="image" href="' . esc_url( plugins_url( 'hero-mobil.webp', __FILE__ ) ) . '" media="(max-width: 767px)" fetchpriority="high">' . "\n";
+		echo '<style id="nordic-hero-mobil">@media (max-width:767px){.elementor-1445 .elementor-element.elementor-element-ffb8bd4:not(.elementor-motion-effects-element-type-background){background-image:url(' . esc_url( plugins_url( 'hero-mobil.webp', __FILE__ ) ) . ') !important;background-position:-45px 0 !important}}'
+			// Tallene 01-04 i guld havde for lav kontrast (2,5:1). Mørkere guld giver ca. 5:1.
+			. '.elementor-1445 .elementor-element-fd25936 .elementor-heading-title,.elementor-1445 .elementor-element-20a4e4e .elementor-heading-title,.elementor-1445 .elementor-element-7789ad9 .elementor-heading-title,.elementor-1445 .elementor-element-9265062 .elementor-heading-title{color:#8A6A3C}</style>' . "\n";
 	}
 	// Skrifttyperne (latin, variable) hentes straks, så overskrifter ikke ombrydes om, når skriften skifter (layoutskift).
 	foreach ( array( 'manrope-58ee1998', 'cormorantgaramond-abcaa8b4' ) as $f ) {
@@ -110,6 +115,7 @@ function nordic_dexa_fix( $html ) {
 			$img = preg_replace( '/\ssrcset="[^"]*"/i', ' srcset="' . $u . '/logo2-520.webp 520w, ' . $u . '/logo2-780.webp 780w"', $img );
 			$img = preg_replace( '/\ssrc="[^"]*"/i', ' src="' . $u . '/logo2-520.webp"', $img );
 		}
+		$img = preg_replace( '/\salt=""/i', ' alt="Nordic DEXA Scan"', $img );
 		return '<a href="https://nordicdexascan.dk/" aria-label="Nordic DEXA Scan - forside">' . $m[1] . $img . '>';
 	}, $html );
 	// Statusbjælker (eksempelresultater) får navn efter overskriften lige før.
