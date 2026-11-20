@@ -2,12 +2,12 @@
 /**
  * Plugin Name: Nordic Booking
  * Description: Online booking og betaling af Basis helkrops-DEXA via Stripe Checkout. Forløb: tid, oplysninger, betaling, supplerende spørgsmål. Visitationen krypteres og vises kun for lægerollen. Lægen godkender; afvisning refunderes.
- * Version: 0.5.0
+ * Version: 0.5.1
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'NB_VER', '0.5.0' );
+define( 'NB_VER', '0.5.1' );
 define( 'NB_DIR', __DIR__ );
 
 require_once NB_DIR . '/inc/core.php';

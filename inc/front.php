@@ -132,3 +132,24 @@ add_shortcode( 'nordic_booking', function () {
 	<?php
 	return ob_get_clean();
 } );
+
+/* SEO på booking- og gavekortsiden: ingen dobbelt H1 fra temaet (Hello Elementor) og strukturerede data for tilbuddet. */
+function nb_is_offer_page() {
+	return is_singular() && ( has_shortcode( (string) get_post_field( 'post_content', get_queried_object_id() ), 'nordic_booking' ) || has_shortcode( (string) get_post_field( 'post_content', get_queried_object_id() ), 'nordic_gavekort' ) );
+}
+add_filter( 'hello_elementor_page_title', function ( $show ) { return nb_is_offer_page() ? false : $show; } );
+add_action( 'wp_head', function () {
+	if ( ! nb_is_offer_page() || isset( $_GET['gk'] ) || isset( $_GET['nb'] ) ) { return; }
+	$s = nb_settings();
+	$gift = has_shortcode( (string) get_post_field( 'post_content', get_queried_object_id() ), 'nordic_gavekort' );
+	$ld = array(
+		'@context' => 'https://schema.org',
+		'@type'    => 'Service',
+		'name'     => $gift ? 'Gavekort: ' . $s['product'] : $s['product'],
+		'serviceType' => 'DEXA-scanning (kropssammensætning)',
+		'provider' => array( '@id' => home_url( '/#organization' ) ),
+		'areaServed' => 'København',
+		'offers'   => array( '@type' => 'Offer', 'price' => number_format( $s['price_ore'] / 100, 2, '.', '' ), 'priceCurrency' => 'DKK', 'url' => get_permalink( get_queried_object_id() ), 'availability' => 'https://schema.org/InStock' ),
+	);
+	echo '<script type="application/ld+json">' . wp_json_encode( $ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
+}, 20 );
