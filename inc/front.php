@@ -153,3 +153,8 @@ add_action( 'wp_head', function () {
 	);
 	echo '<script type="application/ld+json">' . wp_json_encode( $ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
 }, 20 );
+/* Tak-sider og links fra e-mails (?nb=...) må ikke indekseres. */
+add_filter( 'wp_robots', function ( $r ) {
+	if ( isset( $_GET['nb'] ) && function_exists( 'nb_is_offer_page' ) && nb_is_offer_page() ) { $r['noindex'] = true; $r['nofollow'] = true; }
+	return $r;
+} );
