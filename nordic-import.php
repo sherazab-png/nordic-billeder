@@ -992,6 +992,16 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $o );
 	}
+	if ( 'mkpage' === $fn ) {
+		// Opret eller opdater en udgivet side ud fra slug (godkendt indhold). Sætter skabelon og Rank Math titel/beskrivelse.
+		$ex = get_page_by_path( $op['slug'], OBJECT, 'page' );
+		$arr = array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $op['title'], 'post_name' => $op['slug'], 'post_content' => $op['content'] );
+		if ( $ex ) { $arr['ID'] = $ex->ID; if ( ! metadata_exists( 'post', $ex->ID, '_nordic_bk_' . $op['id'] ) ) { add_post_meta( $ex->ID, '_nordic_bk_' . $op['id'], wp_slash( $ex->post_content ) ); } $pid = wp_update_post( wp_slash( $arr ), true ); } else { $pid = wp_insert_post( wp_slash( $arr ), true ); }
+		if ( is_wp_error( $pid ) ) { return array( 'error' => $pid->get_error_message() ); }
+		if ( ! empty( $op['template'] ) ) { update_post_meta( $pid, '_wp_page_template', $op['template'] ); }
+		foreach ( (array) ( $op['meta'] ?? array() ) as $k => $v ) { update_post_meta( $pid, $k, wp_slash( $v ) ); }
+		return array( 'summary' => array( 'id' => $pid, 'url' => get_permalink( $pid ) ) );
+	}
 	if ( 'kokoq' === $fn ) {
 		// Kun læsning af Koko Analytics-tabeller: q = [SELECT ...] med {p} for tabelpræfiks. Andre tabeller og andre kommandoer afvises.
 		global $wpdb; $o = array( 'tables' => array() );
