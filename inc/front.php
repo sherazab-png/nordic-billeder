@@ -76,6 +76,9 @@ add_shortcode( 'nordic_booking', function () {
 				<p>Du sendes videre til en sikker betalingsside hos Stripe, hvor du kan betale med kort eller MobilePay.</p>
 				<div class="nbd-info">Beløbet trækkes nu. Bagefter besvarer du nogle korte supplerende spørgsmål, og en læge vurderer, om scanningen er berettiget. <b>Kan scanningen ikke godkendes, refunderer vi hele beløbet.</b></div>
 				<p class="nbd-hint">Kortoplysninger indtastes kun hos Stripe og gemmes aldrig hos os. Tiden holdes til dig i 30 minutter, mens du betaler.</p>
+				<details class="nbd-gift" id="nbd-gift"><summary>Har du et gavekort?</summary>
+					<div class="fld" style="margin-top:10px"><label for="nbd-g">Gavekortets kode</label><div style="display:flex;gap:8px"><input id="nbd-g" type="text" autocomplete="off" maxlength="14" placeholder="DEXA-XXXX-XXXX" style="text-transform:uppercase"><button type="button" class="b sec" id="nbd-gchk">Brug</button></div><span class="nbd-hint" id="nbd-gmsg" aria-live="polite"></span></div>
+				</details>
 			</section>
 			<section class="nbd-pane" data-p="4" hidden>
 				<h2>Supplerende spørgsmål</h2>

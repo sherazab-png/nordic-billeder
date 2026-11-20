@@ -18,6 +18,7 @@ function nb_settings() {
 		'terms_url'    => '',
 		'privacy_url'  => '',
 		'page_url'     => '',
+		'gift_page_url' => '',
 	);
 	return wp_parse_args( (array) get_option( 'nb_settings', array() ), $d );
 }
@@ -51,6 +52,7 @@ function nb_activate() {
 		visit MEDIUMTEXT NULL,
 		visit_at DATETIME NULL,
 		cpr TEXT NULL,
+		gift_id BIGINT UNSIGNED NULL,
 		receipt_url VARCHAR(500) NULL,
 		clinic_mail_at DATETIME NULL,
 		reminded_at DATETIME NULL,
@@ -89,6 +91,7 @@ function nb_activate() {
 		PRIMARY KEY  (id),
 		KEY booking_id (booking_id)
 	) $c;" );
+	do_action( 'nb_install_tables', $c );
 	add_role( 'nb_laege', 'Læge (booking)', array( 'read' => true, 'nb_manage' => true, 'nb_view_health' => true ) );
 	$admin = get_role( 'administrator' );
 	if ( $admin ) { $admin->add_cap( 'nb_manage' ); $admin->add_cap( 'nb_view_health' ); }

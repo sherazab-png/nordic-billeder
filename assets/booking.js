@@ -3,7 +3,7 @@
 	var R = document.getElementById('nbd');
 	if (!R || !window.NB) { return; }
 	// Trin: 1 tid, 2 oplysninger, 3 betaling, 4 supplerende spørgsmål (efter betaling).
-	var step = 1, sel = { slot: null, date: null, time: null }, view = new Date(), slots = {}, busy = false, ref = null;
+	var step = 1, sel = { slot: null, date: null, time: null }, view = new Date(), slots = {}, busy = false, ref = null, gift = '';
 	view.setDate(1);
 	var MON = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
 	function q(s) { return R.querySelector(s); }
@@ -32,7 +32,7 @@
 		qa('.nbd-steps li').forEach(function (l) { var s = +l.dataset.s; l.className = s === step ? 'on' : (s < step ? 'done' : ''); });
 		q('#nbd-back').hidden = step === 1 || step === 4;
 		var n = q('#nbd-next');
-		n.textContent = step === 3 ? 'Gå til betaling' : (step === 4 ? 'Send svar' : 'Videre');
+		n.textContent = step === 3 ? (gift ? 'Book med gavekort' : 'Gå til betaling') : (step === 4 ? 'Send svar' : 'Videre');
 		n.disabled = !valid();
 	}
 	function load() {
@@ -69,7 +69,7 @@
 
 	function pay() {
 		busy = true; show(); err('');
-		post('hold', { slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value, name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, cpr: q('#nbd-c').value, accept: q('#nbd-ok').checked })
+		post('hold', { slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value, name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, cpr: q('#nbd-c').value, gift: gift, accept: q('#nbd-ok').checked })
 			.then(function (x) {
 				if (x.ok && x.j.url) { window.location.href = x.j.url; return; }
 				busy = false;
@@ -107,6 +107,17 @@
 	});
 	// Fødselsdato: kun tal, bindestreg indsættes automatisk efter 6 cifre (ddmmåå-xxxx).
 	q('#nbd-c').addEventListener('input', function (e) { var d = e.target.value.replace(/\D/g, '').slice(0, 10); e.target.value = d.length > 6 ? d.slice(0, 6) + '-' + d.slice(6) : d; });
+	// Gavekort: tjek koden, før den bruges.
+	q('#nbd-gchk').addEventListener('click', function () {
+		var c = q('#nbd-g').value.trim().toUpperCase(), m = q('#nbd-gmsg');
+		if (!c) { gift = ''; m.textContent = ''; show(); return; }
+		post('gift/check', { code: c }).then(function (x) {
+			if (x.ok) { gift = c; m.textContent = 'Gavekortet er gyldigt (til og med ' + x.j.expires + '). Der skal ikke betales mere.'; }
+			else { gift = ''; m.textContent = (x.j && x.j.message) || 'Koden kunne ikke bruges.'; }
+			show();
+		});
+	});
+	q('#nbd-g').addEventListener('input', function () { if (gift) { gift = ''; q('#nbd-gmsg').textContent = ''; show(); } });
 	R.addEventListener('change', show); R.addEventListener('input', show);
 
 	function result(h, t) { q('#nbd-flow').hidden = true; var r = q('#nbd-result'); r.hidden = false; q('#nbd-rh').textContent = h; q('#nbd-rt').textContent = t; r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }

@@ -87,6 +87,7 @@ function nb_handle_event( array $ev ) {
 	switch ( $ev['type'] ) {
 		case 'checkout.session.completed':
 		case 'checkout.session.async_payment_succeeded':
+			if ( 0 === strpos( (string) ( $o['client_reference_id'] ?? '' ), 'g_' ) ) { nb_gift_paid( substr( $o['client_reference_id'], 2 ), $o ); return; }
 			$b = nb_get( 'ref', $o['client_reference_id'] ?? ( $o['metadata']['nb_ref'] ?? '' ) );
 			if ( ! $b ) { nb_log( null, 'webhook_unknown', $ev['type'] ); return; }
 			if ( ( $o['payment_status'] ?? '' ) === 'paid' ) { nb_mark_paid( $b, $o ); }
@@ -99,7 +100,13 @@ function nb_handle_event( array $ev ) {
 			return;
 		case 'charge.refunded':
 			$b = nb_get( 'pi_id', (string) ( $o['payment_intent'] ?? '' ) );
-			if ( ! $b ) { return; }
+			if ( ! $b ) {
+				// Ubrugt gavekort refunderet direkte i Stripe.
+				$g = nb_gift_get( 'pi_id', (string) ( $o['payment_intent'] ?? '' ) );
+				if ( $g && (int) ( $o['amount_refunded'] ?? 0 ) >= (int) $g->amount ) { nb_gift_mark_refunded( $g->id, 'stripe' ); }
+				return;
+			}
+			if ( $b->gift_id && (int) ( $o['amount_refunded'] ?? 0 ) >= (int) $b->amount ) { nb_gift_mark_refunded( $b->gift_id, 'booking' ); }
 			$GLOBALS['wpdb']->query( $GLOBALS['wpdb']->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET refunded=GREATEST(refunded, %d), updated_at=%s WHERE id=%d', (int) ( $o['amount_refunded'] ?? 0 ), nb_now(), $b->id ) );
 			nb_log( $b->id, 'refunded_stripe', (string) ( $o['amount_refunded'] ?? '' ) );
 			// Fuld refusion lavet direkte i Stripe: frigiv tiden og marker bookingen.

@@ -17,7 +17,7 @@ function nb_sig() { $s = nb_settings(); return "\n\nVenlig hilsen\n" . $s['addre
 function nb_mail_paid( $b ) {
 	$s = nb_settings();
 	return nb_send( $b, 'paid', $b->email, 'Vi har modtaget din booking - ' . nb_human( $b->starts_utc ),
-		"Hej " . $b->name . "\n\nTak for din booking af " . $s['product'] . " " . nb_human( $b->starts_utc ) . ".\n\nVi har modtaget din betaling.\n\n" . ( $b->visit_at ? "En læge gennemgår nu dine svar på de supplerende spørgsmål, fordi en DEXA-scanning skal være berettiget. Du får en bekræftelse, når det er sket." : "Besvar venligst de supplerende spørgsmål, hvis du ikke allerede har gjort det. En DEXA-scanning skal være berettiget, og en læge skal godkende den, før din tid er endeligt bekræftet:\n" . nb_visit_link( $b ) ) . "\n\nKan scanningen ikke godkendes, refunderer vi hele beløbet.\n\nDin kvittering kommer i en separat e-mail fra vores betalingsudbyder Stripe.\n\nBookingnummer: " . $b->ref . nb_sig() );
+		"Hej " . $b->name . "\n\nTak for din booking af " . $s['product'] . " " . nb_human( $b->starts_utc ) . ".\n\n" . ( $b->gift_id ? 'Dit gavekort er registreret, og der skal ikke betales mere.' : 'Vi har modtaget din betaling.' ) . "\n\n" . ( $b->visit_at ? "En læge gennemgår nu dine svar på de supplerende spørgsmål, fordi en DEXA-scanning skal være berettiget. Du får en bekræftelse, når det er sket." : "Besvar venligst de supplerende spørgsmål, hvis du ikke allerede har gjort det. En DEXA-scanning skal være berettiget, og en læge skal godkende den, før din tid er endeligt bekræftet:\n" . nb_visit_link( $b ) ) . "\n\n" . ( $b->gift_id ? 'Kan scanningen ikke godkendes, refunderer vi beløbet til den, der købte gavekortet.' : 'Kan scanningen ikke godkendes, refunderer vi hele beløbet.' ) . ( $b->gift_id ? '' : "\n\nDin kvittering kommer i en separat e-mail fra vores betalingsudbyder Stripe." ) . "\n\nBookingnummer: " . $b->ref . nb_sig() );
 }
 /* Samlet mail til klinikken med alle oplysninger, så tiden kan overføres til klinikkens kalender.
    Indeholder CPR og helbredssvar: sendes via sitets Microsoft 365-forbindelse (TLS) til klinikkens egen postkasse,
@@ -42,9 +42,15 @@ function nb_mail_clinic_new( $b ) {
 	$L[] = 'E-mail: ' . $b->email;
 	$L[] = '';
 	$L[] = 'BETALING';
-	$L[] = 'Godkendt: ' . number_format( $b->amount / 100, 2, ',', '.' ) . ' kr. ' . ( $b->paid_at ? nb_local( $b->paid_at, 'd.m.Y H:i' ) : '' );
-	$L[] = 'Betalings-id (Stripe): ' . ( $b->pi_id ?: '-' );
-	$L[] = 'Kvittering: ' . ( $b->receipt_url ?: 'sendes af Stripe til patienten' );
+	$gift = $b->gift_id ? nb_gift_get( 'id', $b->gift_id ) : null;
+	if ( $gift ) {
+		$L[] = 'Betalt med gavekort ****-' . $gift->code_last4 . ' (' . number_format( $gift->amount / 100, 2, ',', '.' ) . ' kr., købt ' . nb_local( $gift->paid_at, 'd.m.Y' ) . ' af ' . $gift->buyer_name . ', ' . $gift->buyer_email . ')';
+		$L[] = 'Betalings-id for gavekortet (Stripe): ' . ( $gift->pi_id ?: '-' );
+	} else {
+		$L[] = 'Godkendt: ' . number_format( $b->amount / 100, 2, ',', '.' ) . ' kr. ' . ( $b->paid_at ? nb_local( $b->paid_at, 'd.m.Y H:i' ) : '' );
+		$L[] = 'Betalings-id (Stripe): ' . ( $b->pi_id ?: '-' );
+		$L[] = 'Kvittering: ' . ( $b->receipt_url ?: 'sendes af Stripe til patienten' );
+	}
 	$L[] = 'Bookingnummer: ' . $b->ref;
 	$L[] = '';
 	$L[] = 'SUPPLERENDE SPØRGSMÅL';
@@ -100,7 +106,7 @@ function nb_mail_reminder( $b ) {
 }
 function nb_mail_rejected( $b ) {
 	return nb_send( $b, 'rejected', $b->email, 'Din booking af DEXA-scanning',
-		"Hej " . $b->name . "\n\nEfter lægefaglig vurdering kan vi desværre ikke tilbyde dig scanningen på det foreliggende grundlag. Ring gerne til os, hvis du har spørgsmål.\n\nHele beløbet er refunderet. Det kan tage 5-10 bankdage, før pengene står på din konto.\n\nBookingnummer: " . $b->ref . nb_sig() );
+		"Hej " . $b->name . "\n\nEfter lægefaglig vurdering kan vi desværre ikke tilbyde dig scanningen på det foreliggende grundlag. Ring gerne til os, hvis du har spørgsmål.\n\n" . ( $b->gift_id ? 'Bookingen var betalt med et gavekort. Beløbet refunderes til den, der købte gavekortet.' : 'Hele beløbet er refunderet. Det kan tage 5-10 bankdage, før pengene står på din konto.' ) . "\n\nBookingnummer: " . $b->ref . nb_sig() );
 }
 function nb_mail_cancelled( $b, $amount ) {
 	return nb_send( $b, 'cancelled', $b->email, 'Din booking er afbestilt',

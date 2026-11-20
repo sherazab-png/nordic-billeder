@@ -58,3 +58,5 @@
 .nbd-load{opacity:.5;pointer-events:none}
 .nbd-ok-pay{background:#E6F4EC;border-radius:10px;padding:12px 14px;font-weight:600;margin:0 0 12px}
 @media(max-width:520px){.nbd-steps li.on{font-size:12px;padding:8px 6px}.nbd-steps li.on:before{margin-right:4px}}
+.nbd-gift{margin-top:14px;border:1px solid var(--l);border-radius:10px;padding:10px 14px}.nbd-gift summary{cursor:pointer;font-weight:600;color:var(--s)}
+.nbd-gk-card{max-width:560px;margin:0 auto 18px;border:2px solid var(--a);border-radius:18px;padding:34px 28px;text-align:center;background:linear-gradient(180deg,#fff,var(--bg2))}.nbd-gk-brand{letter-spacing:.12em;text-transform:uppercase;color:var(--m);font-size:13px;margin:0}.nbd-gk-card h1{margin:6px 0 4px}.nbd-gk-to{font-size:18px;margin:0 0 8px}.nbd-gk-what{font-weight:700;color:var(--s);margin:0 0 12px}.nbd-gk-msg{font-style:italic;margin:0 0 16px}.nbd-gk-code{font:700 26px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.08em;background:#fff;border:1px dashed var(--a);border-radius:10px;padding:12px;margin:0 0 14px;color:var(--s)}.nbd-gk-meta{font-size:13px;color:var(--m);margin:0}.nbd-gk-view .b{display:block;margin:0 auto}

@@ -77,6 +77,15 @@ function nb_rest_hold( WP_REST_Request $r ) {
 	}
 	$b = nb_get( 'id', $bid );
 	nb_log( $bid, 'hold', nb_local( $slot->starts_utc ) );
+	$gcode = trim( (string) ( $p['gift'] ?? '' ) );
+	if ( '' !== $gcode ) {
+		$nb = nb_gift_redeem( $b, $gcode );
+		if ( is_wp_error( $nb ) ) {
+			nb_release_slot( $b ); $wpdb->delete( nb_t( 'bookings' ), array( 'id' => $bid ) );
+			return nb_err( 'nb_gift', $nb->get_error_message(), 422 );
+		}
+		return array( 'url' => add_query_arg( array( 'nb' => 'ok', 'ref' => $nb->ref ), get_permalink( $page ) ) );
+	}
 	$cs = nb_create_checkout( $b, get_permalink( $page ) );
 	if ( is_wp_error( $cs ) || empty( $cs['url'] ) ) {
 		nb_log( $bid, 'checkout_error', is_wp_error( $cs ) ? $cs->get_error_message() : 'ingen url' );
@@ -174,6 +183,9 @@ function nb_rest_mock_tool( WP_REST_Request $r ) {
 	global $wpdb;
 	$p = (array) $r->get_json_params(); $act = (string) ( $p['act'] ?? '' );
 	if ( 'age' === $act ) { return array( 'n' => $wpdb->query( 'UPDATE ' . nb_t( 'slots' ) . ' SET held_until=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 HOUR) WHERE held_until IS NOT NULL' ) ); }
+	if ( 'gifts' === $act ) { return $wpdb->get_results( 'SELECT id, ref, status, code_last4, buyer_email, recipient, booking_id, expires_at, pi_id FROM ' . nb_t( 'gifts' ) . ' ORDER BY id DESC LIMIT 10', ARRAY_A ); }
+	if ( 'giftcode' === $act ) { $g = nb_gift_get( 'ref', (string) ( $p['ref'] ?? '' ) ); return $g ? nb_decrypt( $g->code_enc ) : array(); }
+	if ( 'giftrefund' === $act ) { $g = nb_gift_get( 'ref', (string) ( $p['ref'] ?? '' ) ); return array( 'msg' => $g ? nb_gift_refund_unused( $g ) : 'ukendt' ); }
 	if ( 'agepaid' === $act ) { return array( 'n' => $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET paid_at=DATE_SUB(UTC_TIMESTAMP(), INTERVAL 25 HOUR) WHERE ref=%s', (string) ( $p['ref'] ?? '' ) ) ) ); }
 	if ( 'remind' === $act ) { nb_remind(); return array( 'ok' => 1 ); }
 	if ( 'cron' === $act ) { nb_cleanup_holds(); nb_purge(); return array( 'ok' => 1 ); }

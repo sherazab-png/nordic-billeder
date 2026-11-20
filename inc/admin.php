@@ -46,6 +46,7 @@ function nb_do_action( $b, $act, $amt = null ) {
 		$nb = nb_transition( $b, array( 'paid' ), 'rejected', array( 'decided_at' => nb_now(), 'decided_by' => get_current_user_id() ) );
 		if ( $nb ) {
 			$ok = nb_refund( $nb, null, 'afvist' );
+			if ( $ok && $nb->gift_id ) { nb_gift_mark_refunded( $nb->gift_id, 'afvist' ); }
 			if ( ! $ok ) { nb_transition( $nb, array( 'rejected' ), 'refund_failed' ); }
 			nb_release_slot( $nb );
 			$msg = $ok ? ( nb_mail_rejected( nb_get( 'id', $id ) ) ? 'Afvist, refunderet og patienten informeret.' : 'Afvist og refunderet, men e-mailen fejlede.' ) : 'Afvist, men refusionen fejlede. Se loggen og refunder i Stripe.';
@@ -54,6 +55,7 @@ function nb_do_action( $b, $act, $amt = null ) {
 		$nb = nb_transition( $b, array( 'paid', 'approved' ), 'cancelled', array( 'decided_at' => nb_now(), 'decided_by' => get_current_user_id() ) );
 		if ( $nb ) {
 			$ok = 0 === $amt ? true : nb_refund( $nb, $amt, 'afbestilt' );
+			if ( $nb->gift_id ) { if ( 0 === $amt ) { nb_gift_reactivate( $nb ); } elseif ( $ok && null === $amt ) { nb_gift_mark_refunded( $nb->gift_id, 'afbestilt' ); } }
 			if ( ! $ok ) { nb_transition( $nb, array( 'cancelled' ), 'refund_failed' ); }
 			nb_release_slot( $nb );
 			$nb = nb_get( 'id', $id );
@@ -130,7 +132,7 @@ function nb_admin_detail( $id ) {
 		nb_btn( $b, 'reject', 'Afvis og refunder hele beløbet', 'button', '', 'Afvis og refunder hele beløbet? Patienten får besked.' );
 	}
 	if ( in_array( $b->status, array( 'paid', 'approved' ), true ) ) {
-		nb_btn( $b, 'cancel', 'Afbestil og refunder', 'button', '<input type="text" name="amount" placeholder="Beløb i kr. (tom = alt)" style="width:170px;margin-right:4px">', 'Afbestil bookingen og refunder det angivne beløb?' );
+		nb_btn( $b, 'cancel', 'Afbestil og refunder', 'button', '<input type="text" name="amount" placeholder="' . ( $b->gift_id ? 'Tom = refunder køber, 0 = gavekort gyldigt igen' : 'Beløb i kr. (tom = alt)' ) . '" style="width:' . ( $b->gift_id ? '300' : '170' ) . 'px;margin-right:4px">', 'Afbestil bookingen og refunder det angivne beløb?' );
 	}
 	if ( 'approved' === $b->status ) { nb_btn( $b, 'complete', 'Marker som gennemført' ); }
 	if ( 'refund_failed' === $b->status ) { nb_btn( $b, 'retry_refund', 'Prøv refusion igen', 'button button-primary' ); }
