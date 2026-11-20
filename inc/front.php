@@ -66,7 +66,7 @@ add_shortcode( 'nordic_booking', function () {
 				<div class="fld"><label for="nbd-n">Navn</label><input id="nbd-n" type="text" autocomplete="name" maxlength="190"></div>
 				<div class="fld"><label for="nbd-e">E-mail</label><input id="nbd-e" type="email" autocomplete="email" maxlength="190"></div>
 				<div class="fld"><label for="nbd-t">Telefon</label><input id="nbd-t" type="tel" autocomplete="tel" maxlength="20"></div>
-				<div class="fld"><label for="nbd-c">Fødselsdato (ddmmåå-xxxx)</label><input id="nbd-c" type="text" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="ddmmåå-xxxx"><span class="nbd-hint">Behandles fortroligt og sendes ikke til betalingsudbyderen.</span></div>
+				<div class="fld"><label for="nbd-c">Fødselsdato (ddmmåå-xxxx)</label><input id="nbd-c" type="text" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="ddmmåå-xxxx" pattern="[0-9]{6}-[0-9]{4}" aria-describedby="nbd-c-h"><span class="nbd-hint" id="nbd-c-h">Skriv som ddmmåå-xxxx, fx 010180-1234. Behandles fortroligt og sendes ikke til betalingsudbyderen.</span></div>
 				<div class="nbd-hp" aria-hidden="true"><label>Lad dette felt stå tomt <input id="nbd-hp" type="text" tabindex="-1" autocomplete="off"></label></div>
 				<div class="nbd-info" style="background:var(--bg2)"><b>Før du betaler:</b> Tilbuddet er for voksne. DEXA-scanning udføres ikke under graviditet, men amning er som udgangspunkt ikke en hindring. Scanneren giver de mest nøjagtige resultater op til 197 cm i højde og 159 kg i vægt. Efter betalingen besvarer du nogle korte supplerende spørgsmål, som en læge gennemgår.</div>
 				<label class="opt" style="margin-top:12px"><input type="checkbox" id="nbd-ok"> <span>Jeg har læst <?php echo $terms; // phpcs:ignore ?> samt <?php echo $priv; // phpcs:ignore ?>.</span></label>
@@ -110,7 +110,7 @@ add_shortcode( 'nordic_booking', function () {
 			<dl>
 				<div><dt>Tid</dt><dd id="nbd-st">Ikke valgt</dd></div>
 				<div><dt>Sted</dt><dd><?php echo nl2br( esc_html( $s['address'] ) ); ?></dd></div>
-				<div><dt>Varighed</dt><dd>Selve scanningen tager 10-20 minutter</dd></div>
+				<div><dt>Varighed</dt><dd>Selve scanningen tager ca. 10 minutter</dd></div>
 			</dl>
 			<p class="nbd-pay">Betaling med kort eller MobilePay via Stripe.</p>
 		</aside>

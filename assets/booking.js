@@ -20,7 +20,7 @@
 
 	function valid() {
 		if (step === 1) { return !!sel.slot; }
-		if (step === 2) { return q('#nbd-n').value.trim().length > 1 && /\S+@\S+\.\S+/.test(q('#nbd-e').value) && q('#nbd-t').value.replace(/\D/g, '').length >= 8 && /^\d{6}-?\d{4}$/.test(q('#nbd-c').value.replace(/\s/g, '')) && q('#nbd-ok').checked; }
+		if (step === 2) { return q('#nbd-n').value.trim().length > 1 && /\S+@\S+\.\S+/.test(q('#nbd-e').value) && q('#nbd-t').value.replace(/\D/g, '').length >= 8 && /^\d{6}-\d{4}$/.test(q('#nbd-c').value) && q('#nbd-ok').checked; }
 		if (step === 4) {
 			q('[data-stop=g]').hidden = v('nbd_g') !== 'ja'; q('[data-stop=h]').hidden = v('nbd_h') !== 'ja';
 			return !busy && !!v('nbd_f') && !!v('nbd_g') && !!v('nbd_h');
@@ -105,6 +105,8 @@
 		}
 		if (b.id === 'nbd-back') { step--; err(''); show(); }
 	});
+	// Fødselsdato: kun tal, bindestreg indsættes automatisk efter 6 cifre (ddmmåå-xxxx).
+	q('#nbd-c').addEventListener('input', function (e) { var d = e.target.value.replace(/\D/g, '').slice(0, 10); e.target.value = d.length > 6 ? d.slice(0, 6) + '-' + d.slice(6) : d; });
 	R.addEventListener('change', show); R.addEventListener('input', show);
 
 	function result(h, t) { q('#nbd-flow').hidden = true; var r = q('#nbd-result'); r.hidden = false; q('#nbd-rh').textContent = h; q('#nbd-rt').textContent = t; r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }

@@ -92,7 +92,7 @@ function nb_mail_clinic_answers( $b ) {
 function nb_mail_approved( $b ) {
 	$s = nb_settings();
 	return nb_send( $b, 'approved', $b->email, 'Bekræftelse: DEXA-scanning ' . nb_human( $b->starts_utc ),
-		"Hej " . $b->name . "\n\nDin scanning er godkendt, og din tid er bekræftet:\n\n" . nb_human( $b->starts_utc ) . "\n" . $s['address'] . "\n\nForberedelse: der kræves ingen særlig forberedelse. Kom gerne ca. 15 minutter før din tid i let, løstsiddende tøj uden metaldele, og medbring dit sygesikringsbevis. Selve scanningen tager 10-20 minutter.\n\nDu får din skriftlige rapport inden for 24 timer.\n\nAfbestilling: " . $s['cancel_text'] . "\n\nBookingnummer: " . $b->ref . nb_sig() );
+		"Hej " . $b->name . "\n\nDin scanning er godkendt, og din tid er bekræftet:\n\n" . nb_human( $b->starts_utc ) . "\n" . $s['address'] . "\n\nForberedelse: der kræves ingen særlig forberedelse. Kom gerne ca. 15 minutter før din tid i let, løstsiddende tøj uden metaldele, og medbring dit sygesikringsbevis. Selve scanningen tager ca. 10 minutter.\n\nDu får din skriftlige rapport inden for 24 timer.\n\nAfbestilling: " . $s['cancel_text'] . "\n\nBookingnummer: " . $b->ref . nb_sig() );
 }
 function nb_mail_reminder( $b ) {
 	return nb_send( $b, 'reminder', $b->email, 'Påmindelse: besvar de supplerende spørgsmål før din DEXA-scanning',

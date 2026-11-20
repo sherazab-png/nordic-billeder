@@ -244,10 +244,10 @@ function nb_refund( $b, $amount, $reason ) {
 /* ---------- Cron ---------- */
 add_action( 'nb_cron_5', 'nb_cleanup_holds' );
 add_action( 'nb_cron_5', 'nb_remind' );
-/* Påmindelse: betalt, men de supplerende spørgsmål er ikke besvaret efter 24 timer (eller tidligere, hvis scanningen er inden for 24 timer). Sendes én gang. */
+/* Påmindelse: betalt, men de supplerende spørgsmål er ikke besvaret efter 4 timer (eller tidligere, hvis scanningen er inden for 24 timer). Sendes én gang. */
 function nb_remind() {
 	global $wpdb;
-	$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . nb_t( 'bookings' ) . " WHERE status='paid' AND visit_at IS NULL AND reminded_at IS NULL AND starts_utc > %s AND ( paid_at < %s OR ( starts_utc < %s AND paid_at < %s ) ) LIMIT 20", nb_now(), gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS ), gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS ), gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS ) ) );
+	$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . nb_t( 'bookings' ) . " WHERE status='paid' AND visit_at IS NULL AND reminded_at IS NULL AND starts_utc > %s AND ( paid_at < %s OR ( starts_utc < %s AND paid_at < %s ) ) LIMIT 20", nb_now(), gmdate( 'Y-m-d H:i:s', time() - 4 * HOUR_IN_SECONDS ), gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS ), gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS ) ) );
 	foreach ( $rows as $b ) {
 		if ( 1 !== (int) $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET reminded_at=%s WHERE id=%d AND reminded_at IS NULL', nb_now(), $b->id ) ) ) { continue; }
 		nb_mail_reminder( $b );
