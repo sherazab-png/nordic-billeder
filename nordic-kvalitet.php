@@ -287,6 +287,8 @@ function nordic_k_gone() {
 		'nordicreumatologi.dk' => array( '/swot-analysis-examples/', '/social-media-trends/', '/schema-markup-website-structure/*', '/tag/*', '/category/*', '/author/*' ),
 	);
 	$p = '/' . trim( strtolower( (string) wp_parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH ) ), '/' ) . '/'; // phpcs:ignore
+	// Alle sites: WordPress' standardindlæg og arkiver (runde 3 T1).
+	if ( preg_match( '#^/(hello-world|category/.+|tag/.+|20\d\d(/\d\d){0,2})/$#', $p ) ) { return true; }
 	foreach ( $gone[ $h ] ?? array() as $g ) {
 		if ( ( '/*' === substr( $g, -2 ) ) ? 0 === strpos( $p, substr( $g, 0, -1 ) ) : $p === $g ) { return true; }
 	}
