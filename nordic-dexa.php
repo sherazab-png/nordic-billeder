@@ -48,12 +48,12 @@ add_action( 'wp_head', function () {
    Lille guldtekst, mærket "Populær" og knappen "Ring og book tid" får den mørkere guld #8A6A3C (ca. 5:1).
    Links i brødtekst understreges. Prisens "kr" på Premium-kortet var navy på navy og bliver hvid. */
 add_action( 'wp_head', function () {
-	$txt = array( 'fd25936', '20a4e4e', '7789ad9', '9265062', '88360b7', '2dfd635', '672b8b7', 'a3483e4', 'bd24855', 'f329de1', 'c585852', '002fb18', 'cde3469', '80007dd' );
+	$txt = array( 'fd25936', '20a4e4e', '7789ad9', '9265062', '88360b7', '2dfd635', '672b8b7', 'a3483e4', 'bd24855', 'f329de1', 'c585852', '002fb18', 'cde3469', '80007dd', '1a92139' );
 	$pill = array( '444816e', 'd4b5217', '5ac88d2', 'd804b00', 'dc0704d' );
-	$btn = array( '89cdfff', 'd09d130', 'cec0694', 'e5f51ea', 'ab13ffb', 'ac093f7', '8b2cd2c', 'f336752', '298999c' );
+	$btn = array( '89cdfff', 'd09d130', 'cec0694', 'e5f51ea', 'ab13ffb', 'ac093f7', '8b2cd2c', 'f336752', '298999c', 'cb34bf2' );
 	$m = function ( $ids, $suf ) { return implode( ',', array_map( function ( $i ) use ( $suf ) { return '.elementor .elementor-element.elementor-element-' . $i . $suf; }, $ids ) ); };
 	echo '<style id="nordic-kontrast">'
-		. $m( $txt, ' .elementor-heading-title' ) . '{color:#8A6A3C!important}'
+		. $m( $txt, ' .elementor-heading-title' ) . ',' . $m( $txt, ' .elementor-widget-container' ) . ',' . $m( $txt, ' p' ) . '{color:#8A6A3C!important}'
 		. $m( $pill, '' ) . '{background-color:#8A6A3C!important}'
 		. $m( $btn, ' .elementor-button' ) . '{background-color:#8A6A3C!important}'
 		. '.elementor .elementor-element.elementor-element-744004b,.elementor .elementor-element.elementor-element-744004b *{color:#fff!important}'
