@@ -53,7 +53,7 @@ add_action( 'wp_head', function () {
 	$btn = array( '89cdfff', 'd09d130', 'cec0694', 'e5f51ea', 'ab13ffb', 'ac093f7', '8b2cd2c', 'f336752', '298999c', 'cb34bf2' );
 	$m = function ( $ids, $suf ) { return implode( ',', array_map( function ( $i ) use ( $suf ) { return '.elementor .elementor-element.elementor-element-' . $i . $suf; }, $ids ) ); };
 	echo '<style id="nordic-kontrast">'
-		. $m( $txt, ' .elementor-heading-title' ) . ',' . $m( $txt, ' .elementor-widget-container' ) . ',' . $m( $txt, ' p' ) . '{color:#8A6A3C!important}'
+		. $m( $txt, ' .elementor-heading-title' ) . ',' . $m( $txt, ' .elementor-widget-container' ) . ',' . $m( $txt, ' p' ) . ',' . $m( $txt, ' .elementor-heading-title span' ) . '{color:#8A6A3C!important}'
 		. $m( $pill, '' ) . '{background-color:#8A6A3C!important}'
 		. $m( $btn, ' .elementor-button' ) . '{background-color:#8A6A3C!important}'
 		. '.elementor .elementor-element.elementor-element-744004b,.elementor .elementor-element.elementor-element-744004b *{color:#fff!important}'
