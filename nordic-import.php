@@ -1093,6 +1093,20 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $n );
 	}
+	if ( 'dbgrep' === $fn ) {
+		// Kun læsning: find tekst i Fluent Forms (felter, bekræftelser, notifikationer) og options. q = [tekst, ...].
+		global $wpdb; $o = array();
+		$t = array( 'fluentform_forms' => array( 'id', 'form_fields' ), 'fluentform_form_meta' => array( 'meta_key', 'value' ), 'options' => array( 'option_name', 'option_value' ) );
+		foreach ( (array) $op['q'] as $q ) {
+			foreach ( $t as $tb => $c ) {
+				$tbl = $wpdb->prefix . $tb;
+				if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tbl ) ) !== $tbl ) { continue; }
+				$rows = $wpdb->get_results( $wpdb->prepare( "SELECT {$c[0]} AS k, SUBSTRING({$c[1]}, GREATEST(1, LOCATE(%s, {$c[1]}) - 100), 220) AS s FROM `$tbl` WHERE {$c[1]} LIKE %s LIMIT 20", $q, '%' . $wpdb->esc_like( $q ) . '%' ), ARRAY_A );
+				if ( $rows ) { $o[ $q . ' @ ' . $tb ] = $rows; }
+			}
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'elrepl' === $fn ) {
 		// Erstat præcis tekst i et elements tekstfelt: [post, id, felt, fra, til]. Fejler hvis "fra" ikke findes.
 		$log = array();
