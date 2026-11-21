@@ -170,7 +170,7 @@ add_shortcode( 'nordic_booking_demo', function () {
 			<div class="nbd-row"><span>Basis helkrops-DEXA</span><b>899 kr.</b></div>
 			<dl>
 				<div><dt>Tid</dt><dd id="nbd-st">Ikke valgt</dd></div>
-				<div><dt>Sted</dt><dd>Nordic DEXA Scan<br>Laurits Olsens vej 1, 1. sal<br>2650 Hvidovre</dd></div>
+				<div><dt>Sted</dt><dd>Nordic DEXA Scan<br>Laurits Olsens Vej 1, 1. sal<br>2650 Hvidovre</dd></div>
 				<div><dt>Varighed</dt><dd>Scanningen tager cirka 10 minutter</dd></div>
 			</dl>
 			<p class="nbd-pay">Betaling: kort eller MobilePay via Stripe. Beløbet trækkes efter lægefaglig godkendelse.</p>

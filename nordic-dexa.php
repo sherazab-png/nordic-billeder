@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.21
+ * Version: 1.22
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -34,8 +34,7 @@ add_action( 'wp_head', function () {
 		echo '<link rel="preload" as="image" href="' . esc_url( content_url( '/uploads/2026/10/hero_q90.webp' ) ) . '" media="(min-width: 768px)" fetchpriority="high">' . "\n";
 		echo '<link rel="preload" as="image" href="' . esc_url( plugins_url( 'hero-mobil.webp', __FILE__ ) ) . '" media="(max-width: 767px)" fetchpriority="high">' . "\n";
 		echo '<style id="nordic-hero-mobil">@media (max-width:767px){.elementor-1445 .elementor-element.elementor-element-ffb8bd4:not(.elementor-motion-effects-element-type-background){background-image:url(' . esc_url( plugins_url( 'hero-mobil.webp', __FILE__ ) ) . ') !important;background-position:-45px 0 !important}}'
-			// Tallene 01-04 i guld havde for lav kontrast (2,5:1). Mørkere guld giver ca. 5:1.
-			. '.elementor-1445 .elementor-element-fd25936 .elementor-heading-title,.elementor-1445 .elementor-element-20a4e4e .elementor-heading-title,.elementor-1445 .elementor-element-7789ad9 .elementor-heading-title,.elementor-1445 .elementor-element-9265062 .elementor-heading-title{color:#8A6A3C}</style>' . "\n";
+			. '</style>' . "\n";
 	}
 	// Skrifttyperne (latin, variable) hentes straks, så overskrifter ikke ombrydes om, når skriften skifter (layoutskift).
 	foreach ( array( 'manrope-58ee1998', 'cormorantgaramond-abcaa8b4' ) as $f ) {
@@ -44,6 +43,23 @@ add_action( 'wp_head', function () {
 		}
 	}
 }, 1 );
+
+/* Kontrast (runde 3 T4, godkendt 2026-11-21): guld #C79A5B har kun 2,3-2,6:1 mod lys baggrund.
+   Lille guldtekst, mærket "Populær" og knappen "Ring og book tid" får den mørkere guld #8A6A3C (ca. 5:1).
+   Links i brødtekst understreges. Prisens "kr" på Premium-kortet var navy på navy og bliver hvid. */
+add_action( 'wp_head', function () {
+	$txt = array( 'fd25936', '20a4e4e', '7789ad9', '9265062', '88360b7', '2dfd635', '672b8b7', 'a3483e4', 'bd24855', 'f329de1', 'c585852', '002fb18', 'cde3469', '80007dd' );
+	$pill = array( '444816e', 'd4b5217', '5ac88d2', 'd804b00', 'dc0704d' );
+	$btn = array( '89cdfff', 'd09d130', 'cec0694', 'e5f51ea', 'ab13ffb', 'ac093f7', '8b2cd2c', 'f336752', '298999c' );
+	$m = function ( $ids, $suf ) { return implode( ',', array_map( function ( $i ) use ( $suf ) { return '.elementor .elementor-element.elementor-element-' . $i . $suf; }, $ids ) ); };
+	echo '<style id="nordic-kontrast">'
+		. $m( $txt, ' .elementor-heading-title' ) . '{color:#8A6A3C!important}'
+		. $m( $pill, '' ) . '{background-color:#8A6A3C!important}'
+		. $m( $btn, ' .elementor-button' ) . '{background-color:#8A6A3C!important}'
+		. '.elementor .elementor-element.elementor-element-744004b,.elementor .elementor-element.elementor-element-744004b *{color:#fff!important}'
+		. '#content p a:not(.elementor-button),#content li a:not(.elementor-button),.page-content p a,.page-content li a{text-decoration:underline;text-underline-offset:2px}'
+		. '</style>' . "\n";
+}, 99 );
 
 /* ElementsKit-ikonskriften er 454 KB. Sitet bruger 18 ikoner: et udsnit på 3 KB dækker dem via unicode-range.
    Den fulde skrift hentes kun, hvis en side viser et ikon uden for udsnittet (nye ikoner virker stadig). */
@@ -148,6 +164,17 @@ function nordic_dexa_fix( $html ) {
 		$pos = $at + strlen( $mm[0][0] );
 	}
 	$html = $out . substr( $html, $pos );
+	// Skærmlæsertekster på dansk (runde 3 T2).
+	$html = preg_replace_callback( '/aria-label="Rated ([0-9.]+) out of ([0-9]+)"/', function ( $m ) { return 'aria-label="Bedømt ' . str_replace( '.', ',', $m[1] ) . ' ud af ' . $m[2] . '"'; }, $html );
+	$html = preg_replace( '/(role="group" aria-roledescription="slide" aria-label=")([0-9]+) of ([0-9]+)"/', '$1$2 af $3"', $html );
+	$html = str_replace(
+		array( 'aria-label="Menu Toggle"', 'aria-label="Carousel"', 'aria-label="Accordion. Open links with Enter or Space, close with Escape, and navigate with Arrow Keys"', 'aria-roledescription="carousel"', 'aria-roledescription="slide"' ),
+		array( 'aria-label="Menu"', 'aria-label="Billedkarrusel"', 'aria-label="Spørgsmål og svar. Åbn med Enter eller mellemrum, luk med Escape, og gå mellem punkterne med piletasterne"', 'aria-roledescription="karrusel"', 'aria-roledescription="dias"' ),
+		$html
+	);
+	// Billedlinks uden tekst får billedets beskrivelse som navn (runde 3 T5).
+	$html = preg_replace_callback( '/<a\b((?![^>]*aria-label)[^>]*\be-gallery-item\b[^>]*)>(\s*<div\b[^>]*\baria-label="([^"]+)")/i', function ( $m ) { return '<a' . $m[1] . ' aria-label="Vis større billede: ' . $m[3] . '">' . $m[2]; }, $html );
+	$html = preg_replace_callback( '/<a\b((?![^>]*aria-label)[^>]*)>(\s*<img\b[^>]*\balt="([^"]+)"[^>]*>\s*)<\/a>/i', function ( $m ) { return '<a' . $m[1] . ' aria-label="' . $m[3] . '">' . $m[2] . '</a>'; }, $html );
 	return nordic_dexa_schema( $html );
 }
 
@@ -262,3 +289,7 @@ if ( ! function_exists( 'nordic_samtykke_id' ) ) {
 			. '})();</script>' . "\n";
 	}, 99 );
 }
+
+/* Fejlsiden hed "Page Not Found" (runde 3 T6). */
+add_filter( 'rank_math/frontend/title', function ( $t ) { return is_404() ? 'Siden findes ikke - Nordic DEXA Scan' : $t; }, 99 );
+add_filter( 'pre_get_document_title', function ( $t ) { return is_404() ? 'Siden findes ikke - Nordic DEXA Scan' : $t; }, 99 );
