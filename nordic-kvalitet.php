@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic kvalitet
  * Description: SEO- og kvalitetstillæg for Nordic-sites: strukturerede data (klinik, brødkrumme, FAQ), Open Graph, billedattributter, brødkrumme-navigation, sikkerhedsheaders, sitemap og oprydning i WordPress-standarder. Ændrer ingen synlig tekst.
- * Version: 1.0
+ * Version: 1.1
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -281,6 +281,7 @@ function nordic_k_404_page() {
 }
 /* Gamle spam-adresser fra før relanceringen: svar 410 (slettet), så Google glemmer dem (godkendt af Sheraz 2026-11-15). */
 function nordic_k_gone() {
+	if ( ! empty( $GLOBALS['nordic_k_gone_flag'] ) ) { return true; }
 	$h = preg_replace( '/^(www\.|dev\.)/', '', strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ) );
 	$gone = array(
 		'nordicreumatologi.dk' => array( '/swot-analysis-examples/', '/social-media-trends/', '/schema-markup-website-structure/*', '/tag/*', '/category/*', '/author/*' ),
@@ -295,6 +296,15 @@ function nordic_k_gone() {
 add_action( 'template_redirect', function () {
 	if ( is_author() && nordic_k_gone() ) { global $wp_query; $wp_query->set_404(); }
 }, -1 );
+/* Sitene bruger kun sider. Indlæg (fx WordPress' "Hello world!"), kategori-, tag- og datoarkiver svarer 410,
+   og RSS-feeds får noindex (godkendt af Sheraz 2026-11-21, runde 3 T1). Indloggede brugere ser dem som før. */
+add_action( 'template_redirect', function () {
+	if ( is_user_logged_in() ) { return; }
+	if ( is_feed() ) { header( 'X-Robots-Tag: noindex, follow', true ); return; }
+	if ( is_singular( 'post' ) || is_category() || is_tag() || is_date() ) {
+		global $wp_query; $wp_query->set_404(); $GLOBALS['nordic_k_gone_flag'] = true;
+	}
+}, -2 );
 /* 301-omdirigeringer fra de gamle sites' adresser (godkendt af Sheraz 2026-11-04). Gælder kun adresser, der ellers ville give 404. */
 function nordic_k_redirects() {
 	$s = 'https://nordicspecialhospital.dk';
@@ -516,7 +526,7 @@ if ( ! function_exists( 'nordic_samtykke_id' ) ) {
 			. 'var v=get();if(v==="statistik"){ga();}else if(!v){box.hidden=false;}'
 			// Link "Cookie-indstillinger" ved footerens cookie-link.
 			. 'var fl=Array.prototype.slice.call(document.querySelectorAll("footer a[href*=\"/cookies\"],[data-elementor-type=footer] a[href*=\"/cookies\"]"));var a=fl[fl.length-1];'
-			. 'if(a){var b=document.createElement("button");b.type="button";b.className="nsk-indst";b.textContent="Cookie-indstillinger";b.addEventListener("click",function(){box.hidden=false;var f=box.querySelector("button");if(f)f.focus();});var sp=document.createTextNode(" | ");a.parentNode.insertBefore(sp,a.nextSibling);a.parentNode.insertBefore(b,sp.nextSibling);}'
+			. 'if(a){var b=document.createElement("button");b.type="button";b.className="nsk-indst";b.textContent="Cookie-indstillinger";b.addEventListener("click",function(){box.hidden=false;var f=box.querySelector("button");if(f)f.focus();});var sp=document.createElement("span");sp.textContent=" | ";var lc=getComputedStyle(a).color;b.style.color=lc;sp.style.color=lc;a.parentNode.insertBefore(sp,a.nextSibling);a.parentNode.insertBefore(b,sp.nextSibling);}'
 			// Hændelser (sendes kun, når GA er indlæst efter samtykke).
 			. 'function ev(n,p){if(loaded&&window.gtag)gtag("event",n,p||{});}'
 			. 'document.addEventListener("click",function(e){var l=e.target.closest("a[href]");if(!l)return;var h=l.getAttribute("href");if(/^tel:/i.test(h))ev("phone_click",{link_url:h});else if(/^mailto:/i.test(h))ev("email_click",{link_url:h});},true);'
