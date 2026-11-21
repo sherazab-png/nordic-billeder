@@ -10,6 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/booking-demo.php';
 
 
+/* Engelsk side: sidens egen H1 bruges, temaets sidetitel vises ikke (én H1). */
+add_filter( 'hello_elementor_page_title', function ( $show ) { return is_page( 'en' ) ? false : $show; } );
+
 /* Engelsk side (/en/): sproglinks (hreflang) og enkel styling. */
 add_action( 'wp_head', function () {
 	$en = get_page_by_path( 'en' );
