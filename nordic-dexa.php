@@ -53,7 +53,7 @@ add_action( 'wp_head', function () {
 add_action( 'wp_head', function () {
 	$txt = array( 'fd25936', '20a4e4e', '7789ad9', '9265062', '88360b7', '2dfd635', '672b8b7', 'a3483e4', 'bd24855', 'f329de1', 'c585852', '002fb18', 'cde3469', '80007dd', '1a92139' );
 	$pill = array( '444816e', 'd4b5217', '5ac88d2', 'd804b00', 'dc0704d' );
-	$btn = array( '89cdfff', 'd09d130', 'cec0694', 'e5f51ea', 'ab13ffb', 'ac093f7', '8b2cd2c', 'f336752', '298999c', 'cb34bf2' );
+	$btn = array( '89cdfff', 'd09d130', 'cec0694', 'e5f51ea', 'ab13ffb', 'ac093f7', '8b2cd2c', 'f336752', '298999c', 'cb34bf2', '6a7a627', 'e9f5609' );
 	$m = function ( $ids, $suf ) { return implode( ',', array_map( function ( $i ) use ( $suf ) { return '.elementor .elementor-element.elementor-element-' . $i . $suf; }, $ids ) ); };
 	echo '<style id="nordic-kontrast">'
 		. $m( $txt, ' .elementor-heading-title' ) . ',' . $m( $txt, ' .elementor-widget-container' ) . ',' . $m( $txt, ' p' ) . ',' . $m( $txt, ' .elementor-heading-title span' ) . '{color:#8A6A3C!important}'
