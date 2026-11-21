@@ -12,7 +12,7 @@ function nb_settings() {
 		'lead_hours'   => 2,       // Tidligste booking i forhold til nu.
 		'purge_days'   => 30,      // Visitation slettes dette antal dage efter scanningstidspunktet (afventer ejerens beslutning).
 		'clinic_email' => 'info@nordicspecialhospital.dk',
-		'address'      => "Nordic DEXA Scan\nLaurits Olsens vej 1, 1. sal\n2650 Hvidovre",
+		'address'      => "Nordic DEXA Scan\nLaurits Olsens Vej 1, 1. sal\n2650 Hvidovre",
 		'phone'        => '77 34 00 36',
 		'cancel_text'  => 'Afbestilling skal ske senest 48 timer før din tid.',
 		'terms_url'    => '',
