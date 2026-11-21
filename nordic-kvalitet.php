@@ -502,7 +502,7 @@ if ( ! function_exists( 'nordic_samtykke_id' ) ) {
 			. '.nsk__ja{background:#fff;color:#102A4C}.nsk__nej{background:transparent;color:#fff}'
 			. '.nsk button:hover{filter:brightness(1.1)}'
 			. '.nsk button:focus-visible,.nsk a:focus-visible,.nsk-indst:focus-visible{outline:2px solid #C79A5B;outline-offset:2px}'
-			. '@media(min-width:768px){#find>*>*>a.e-button-base{align-self:flex-start;min-width:240px}}'
+			. '@media(min-width:768px){.elementor-element-6c1480a>a.e-button-base,.elementor-element-37e878f3>a.e-button-base{align-self:flex-start;min-width:240px}}'
 			. '.nsk-indst{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}'
 			. '@media(max-width:600px){.nsk{padding:8px 12px;font-size:12px}.nsk p{text-align:center}.nsk button{min-height:40px;padding:8px 12px}}'
 			. '</style>' . "\n";
