@@ -1093,6 +1093,19 @@ function nordic_imp_run( $op, &$st ) {
 		if ( class_exists( '\Elementor\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); }
 		return array( 'summary' => $n );
 	}
+	if ( 'pcrepl' === $fn ) {
+		// Erstat præcis tekst i en sides post_content (ikke-Elementor-sider): r = [[post, fra, til], ...]. Backup i _nordic_bk_<op-id>.
+		$log = array();
+		foreach ( (array) $op['r'] as $r ) {
+			$p = get_post( (int) $r[0] ); if ( ! $p ) { $log[] = $r[0] . ': ingen side'; continue; }
+			$n = substr_count( $p->post_content, $r[1] );
+			if ( ! $n ) { $log[] = $r[0] . ': ikke fundet'; continue; }
+			if ( ! metadata_exists( 'post', $p->ID, '_nordic_bk_' . $op['id'] ) ) { add_post_meta( $p->ID, '_nordic_bk_' . $op['id'], wp_slash( $p->post_content ) ); }
+			wp_update_post( wp_slash( array( 'ID' => $p->ID, 'post_content' => str_replace( $r[1], $r[2], $p->post_content ) ) ) );
+			$log[] = $r[0] . ': ok x' . $n;
+		}
+		return array( 'summary' => $log );
+	}
 	if ( 'dbgrep' === $fn ) {
 		// Kun læsning: find tekst i Fluent Forms (felter, bekræftelser, notifikationer) og options. q = [tekst, ...].
 		global $wpdb; $o = array();
