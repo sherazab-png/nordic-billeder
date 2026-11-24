@@ -305,6 +305,29 @@ function nordic_imp_golive( $fn, $op ) {
 
 function nordic_imp_run( $op, &$st ) {
 	$fn = $op['fn'] ?? 'ability';
+	if ( ! empty( $op['host'] ) && false === strpos( (string) wp_parse_url( home_url(), PHP_URL_HOST ), $op['host'] ) ) { return array( 'summary' => 'sprunget over (andet site)' ); }
+	if ( 'seofix' === $fn ) {
+		// Ret titel/metabeskrivelse uanset kilde: items = [ [sti, gammel, ny], ... ]. Leder i nordic_seo_current-filen, Rank Math-felter og _nordic_seo. dry = kun vis.
+		$o = array(); $dry = ! empty( $op['dry'] );
+		$file = function_exists( 'nordic_seo_current' ) ? ( new ReflectionFunction( 'nordic_seo_current' ) )->getFileName() : '';
+		$fc = $file ? file_get_contents( $file ) : ''; $f0 = $fc;
+		foreach ( $op['items'] as $it ) {
+			list( $path, $from, $to ) = $it; $pid = url_to_postid( home_url( $path ) ); $where = array();
+			$n = $fc ? substr_count( $fc, $from ) : 0;
+			if ( $n ) { $fc = str_replace( $from, $to, $fc ); $where[] = 'fil x' . $n; }
+			if ( $pid ) {
+				foreach ( array( 'rank_math_title', 'rank_math_description' ) as $k ) { $v = (string) get_post_meta( $pid, $k, true ); if ( false !== strpos( $v, $from ) ) { $where[] = $k; if ( ! $dry ) { update_post_meta( $pid, $k, wp_slash( str_replace( $from, $to, $v ) ) ); } } }
+				$s = get_post_meta( $pid, '_nordic_seo', true );
+				if ( is_array( $s ) ) { foreach ( $s as $k => $v ) { if ( is_string( $v ) && false !== strpos( $v, $from ) ) { $s[ $k ] = str_replace( $from, $to, $v ); $where[] = '_nordic_seo.' . $k; } } if ( ! $dry ) { update_post_meta( $pid, '_nordic_seo', $s ); } }
+			}
+			$o[] = $path . ' (' . $pid . '): ' . ( $where ? implode( ', ', $where ) : 'IKKE FUNDET' );
+		}
+		if ( ! $dry && $fc !== $f0 ) {
+			if ( 0 !== strpos( realpath( $file ), realpath( WP_CONTENT_DIR ) ) ) { return array( 'error' => 'fil uden for wp-content' ); }
+			copy( $file, $file . '.bak-' . gmdate( 'Ymd-His' ) ); file_put_contents( $file, $fc ); if ( function_exists( 'opcache_invalidate' ) ) { opcache_invalidate( $file, true ); }
+		}
+		return array( 'summary' => $o );
+	}
 	if ( 'ability' === $fn ) {
 		$in = nordic_imp_subst( $op['input'], $st['vars'] );
 		$r = nordic_imp_ability( $op['ability'], $in );
