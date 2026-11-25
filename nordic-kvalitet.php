@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic kvalitet
  * Description: SEO- og kvalitetstillæg for Nordic-sites: strukturerede data (klinik, brødkrumme, FAQ), Open Graph, billedattributter, brødkrumme-navigation, sikkerhedsheaders, sitemap og oprydning i WordPress-standarder. Ændrer ingen synlig tekst.
- * Version: 1.1
+ * Version: 1.2
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -53,7 +53,7 @@ add_action( 'wp_head', function () {
 		'@type' => 'MedicalClinic', '@id' => home_url( '/#klinik' ), 'name' => $s['name'], 'url' => home_url( '/' ),
 		'image' => $img, 'logo' => home_url( '/nordic-media/billeder/logo-mark-navy.png' ),
 		'telephone' => $s['telephone'], 'email' => $s['email'], 'address' => $s['address'],
-		'openingHoursSpecification' => $hours, 'areaServed' => 'DK', 'availableLanguage' => 'da',
+		'openingHoursSpecification' => $hours, 'areaServed' => array( array( '@type' => 'City', 'name' => 'København' ), array( '@type' => 'City', 'name' => 'Frederiksberg' ), array( '@type' => 'City', 'name' => 'Hvidovre' ), array( '@type' => 'AdministrativeArea', 'name' => 'Region Hovedstaden' ) ), 'availableLanguage' => 'da',
 		'parentOrganization' => array( '@type' => 'MedicalOrganization', 'name' => 'Nordic Specialhospital', 'url' => 'https://nordicspecialhospital.dk/' ),
 	);
 	if ( $s['specialty'] ) { $clinic['medicalSpecialty'] = $s['specialty']; }
