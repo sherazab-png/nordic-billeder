@@ -307,9 +307,9 @@ function nordic_imp_run( $op, &$st ) {
 	$fn = $op['fn'] ?? 'ability';
 	if ( ! empty( $op['host'] ) && false === strpos( (string) wp_parse_url( home_url(), PHP_URL_HOST ), $op['host'] ) ) { return array( 'summary' => 'sprunget over (andet site)' ); }
 	if ( 'elpath' === $fn ) {
-		// Kun læsning: forfædre (id og type) for et element: post, id.
+		// Kun læsning: forfædre (id og type) for et element: post, el.
 		$tree = json_decode( (string) get_post_meta( (int) $op['post'], '_elementor_data', true ), true ); $path = null;
-		$w = function ( $els, $trail ) use ( &$w, $op, &$path ) { foreach ( (array) $els as $e ) { $t = array_merge( $trail, array( $e['id'] . ' ' . ( $e['widgetType'] ?? $e['elType'] ) . ' [' . count( (array) ( $e['elements'] ?? array() ) ) . ']' ) ); if ( $e['id'] === $op['id'] ) { $path = $t; return; } if ( ! empty( $e['elements'] ) ) { $w( $e['elements'], $t ); if ( $path ) { return; } } } };
+		$w = function ( $els, $trail ) use ( &$w, $op, &$path ) { foreach ( (array) $els as $e ) { $t = array_merge( $trail, array( $e['id'] . ' ' . ( $e['widgetType'] ?? $e['elType'] ) . ' [' . count( (array) ( $e['elements'] ?? array() ) ) . ']' ) ); if ( $e['id'] === $op['el'] ) { $path = $t; return; } if ( ! empty( $e['elements'] ) ) { $w( $e['elements'], $t ); if ( $path ) { return; } } } };
 		$w( $tree, array() );
 		return array( 'summary' => $path );
 	}
