@@ -308,7 +308,8 @@ function nordic_imp_run( $op, &$st ) {
 	if ( ! empty( $op['host'] ) && false === strpos( (string) wp_parse_url( home_url(), PHP_URL_HOST ), $op['host'] ) ) { return array( 'summary' => 'sprunget over (andet site)' ); }
 	if ( 'eltree' === $fn ) {
 		// Kun læsning: kompakt træ (id type: tekst) for en side.
-		$tree = json_decode( (string) get_post_meta( (int) $op['post'], '_elementor_data', true ), true ); $o = array();
+		if ( ! empty( $op['path'] ) ) { $op['post'] = url_to_postid( home_url( $op['path'] ) ); }
+		$tree = json_decode( (string) get_post_meta( (int) $op['post'], '_elementor_data', true ), true ); $o = array( 'post ' . (int) $op['post'] );
 		$w = function ( $els, $d ) use ( &$w, &$o ) { foreach ( (array) $els as $e ) { $s = (array) ( $e['settings'] ?? array() ); $tx = '';
 			foreach ( array( 'title', 'paragraph', 'text', 'editor' ) as $k ) { if ( isset( $s[ $k ] ) ) { $v = is_array( $s[ $k ] ) ? ( $s[ $k ]['value'] ?? '' ) : $s[ $k ]; if ( is_array( $v ) ) { $v = wp_json_encode( $v ); } $tx = mb_substr( wp_strip_all_tags( (string) $v ), 0, 70 ); } }
 			$ln = isset( $s['link']['value']['destination']['value'] ) ? ' ->' . $s['link']['value']['destination']['value'] : '';
