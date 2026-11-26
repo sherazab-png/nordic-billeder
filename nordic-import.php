@@ -1160,6 +1160,19 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $log );
 	}
+	if ( 'grep899' === $fn ) {
+		// Kun læsning: find mønster i posts (indhold, titel, uddrag), postmeta, options, Fluent Forms og nordic-filer. q = tekst.
+		global $wpdb; $q = $op['q']; $o = array(); $like = '%' . $wpdb->esc_like( $q ) . '%';
+		$ctx = function ( $s ) use ( $q ) { $r = array(); $i = 0; while ( false !== ( $i = strpos( $s, $q, $i ) ) && count( $r ) < 8 ) { $r[] = substr( $s, max( 0, $i - 70 ), 110 ); $i += strlen( $q ); } return $r; };
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_type, post_status, post_title, post_content, post_excerpt FROM {$wpdb->posts} WHERE post_status IN ('publish','private','draft') AND post_type NOT IN ('revision') AND (post_content LIKE %s OR post_title LIKE %s OR post_excerpt LIKE %s)", $like, $like, $like ), ARRAY_A ) as $r ) { $o[] = array( 'post', $r['ID'], $r['post_type'], $r['post_status'], $ctx( $r['post_title'] . ' | ' . $r['post_excerpt'] . ' | ' . $r['post_content'] ) ); }
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT m.post_id, m.meta_key, m.meta_value, p.post_status, p.post_type FROM {$wpdb->postmeta} m JOIN {$wpdb->posts} p ON p.ID=m.post_id WHERE p.post_status IN ('publish','private','draft') AND p.post_type<>'revision' AND m.meta_key NOT LIKE '\\_nordic\\_bk\\_%%' AND m.meta_key NOT IN ('_elementor_css','_elementor_element_cache','_elementor_page_assets') AND m.meta_value LIKE %s", $like ), ARRAY_A ) as $r ) { $o[] = array( 'meta', $r['post_id'], $r['post_type'], $r['meta_key'], $ctx( $r['meta_value'] ) ); }
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_value LIKE %s AND option_name NOT LIKE '%%transient%%' AND option_name NOT LIKE 'litespeed%%'", $like ), ARRAY_A ) as $r ) { $o[] = array( 'option', $r['option_name'], $ctx( $r['option_value'] ) ); }
+		foreach ( array( 'fluentform_forms' => 'form_fields', 'fluentform_form_meta' => 'value' ) as $tb => $col ) { $tbl = $wpdb->prefix . $tb; if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tbl ) ) !== $tbl ) { continue; } foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT id, $col AS v FROM `$tbl` WHERE $col LIKE %s", $like ), ARRAY_A ) as $r ) { $o[] = array( $tb, $r['id'], $ctx( $r['v'] ) ); } }
+		$files = array_merge( glob( WP_CONTENT_DIR . '/plugins/nordic-*/*.php' ) ?: array(), glob( WP_CONTENT_DIR . '/plugins/nordic-*/*/*.php' ) ?: array(), glob( WP_CONTENT_DIR . '/plugins/nordic-*/*/*.html' ) ?: array(), glob( WP_CONTENT_DIR . '/mu-plugins/*.php' ) ?: array(), glob( get_stylesheet_directory() . '/*.php' ) ?: array() );
+		foreach ( $files as $f ) { $s = (string) file_get_contents( $f ); if ( false !== strpos( $s, $q ) ) { $o[] = array( 'file', str_replace( WP_CONTENT_DIR, '', $f ), $ctx( $s ) ); } }
+		if ( function_exists( 'nordic_seo_current' ) ) { $o[] = array( 'seo_fn', ( new ReflectionFunction( 'nordic_seo_current' ) )->getFileName() ); }
+		return array( 'summary' => $o );
+	}
 	if ( 'dbgrep' === $fn ) {
 		// Kun læsning: find tekst i Fluent Forms (felter, bekræftelser, notifikationer) og options. q = [tekst, ...].
 		global $wpdb; $o = array();
