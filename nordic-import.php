@@ -306,6 +306,19 @@ function nordic_imp_golive( $fn, $op ) {
 function nordic_imp_run( $op, &$st ) {
 	$fn = $op['fn'] ?? 'ability';
 	if ( ! empty( $op['host'] ) && false === strpos( (string) wp_parse_url( home_url(), PHP_URL_HOST ), $op['host'] ) ) { return array( 'summary' => 'sprunget over (andet site)' ); }
+	if ( 'droptext' === $fn ) {
+		// Fjern det nærmeste overliggende element af typen 'type' (fx e-accordion eller e-div-block), som indeholder et element med præcis teksten 'text'. Kun ét match pr. post accepteres.
+		$pid = (int) $op['post']; $raw = (string) get_post_meta( $pid, '_elementor_data', true ); $tree = json_decode( $raw, true ); $hits = array();
+		$txt = function ( $e ) { $s = (array) ( $e['settings'] ?? array() ); foreach ( array( 'paragraph', 'title', 'text' ) as $k ) { if ( isset( $s[ $k ] ) ) { $v = is_array( $s[ $k ] ) ? ( $s[ $k ]['value'] ?? '' ) : $s[ $k ]; if ( is_string( $v ) ) { return trim( wp_strip_all_tags( $v ) ); } } } return ''; };
+		$find = function ( $els, $stack ) use ( &$find, &$hits, $txt, $op ) { foreach ( (array) $els as $e ) { $st2 = array_merge( $stack, array( $e ) ); if ( $txt( $e ) === $op['text'] ) { for ( $i = count( $st2 ) - 1; $i >= 0; $i-- ) { if ( ( $st2[ $i ]['elType'] ?? '' ) === $op['type'] ) { $hits[] = $st2[ $i ]['id']; break; } } } if ( ! empty( $e['elements'] ) ) { $find( $e['elements'], $st2 ); } } };
+		$find( $tree, array() ); $hits = array_values( array_unique( $hits ) );
+		if ( count( $hits ) !== 1 ) { return array( 'error' => 'forventede 1 match, fandt ' . count( $hits ), 'hits' => $hits ); }
+		if ( ! empty( $op['dry'] ) ) { return array( 'summary' => 'ville fjerne ' . $hits[0] ); }
+		update_post_meta( $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) );
+		$drop = function ( &$els ) use ( &$drop, $hits ) { $o = array(); foreach ( $els as $e ) { if ( $e['id'] === $hits[0] ) { continue; } if ( ! empty( $e['elements'] ) ) { $drop( $e['elements'] ); } $o[] = $e; } $els = $o; };
+		$drop( $tree ); update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) ); delete_post_meta( $pid, '_elementor_css' );
+		return array( 'summary' => 'fjernet ' . $hits[0] );
+	}
 	if ( 'eltree' === $fn ) {
 		// Kun læsning: kompakt træ (id type: tekst) for en side.
 		if ( ! empty( $op['path'] ) ) { $op['post'] = url_to_postid( home_url( $op['path'] ) ); }
