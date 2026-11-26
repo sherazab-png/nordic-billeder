@@ -1160,6 +1160,19 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $log );
 	}
+	if ( 'metarepl' === $fn ) {
+		// Erstat tekst i SEO-felter på alle publicerede sider: _nordic_seo (array) og rank_math_*-tekstfelter. r = [[fra, til], ...]. dry = kun vis.
+		global $wpdb; $log = array();
+		$ids = $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_status='publish' AND post_type IN ('page','post')" );
+		foreach ( $ids as $pid ) {
+			foreach ( array( '_nordic_seo', 'rank_math_title', 'rank_math_description', 'rank_math_facebook_title', 'rank_math_facebook_description', 'rank_math_twitter_title', 'rank_math_twitter_description' ) as $k ) {
+				$v = get_post_meta( $pid, $k, true ); if ( '' === $v || null === $v ) { continue; } $n = 0;
+				foreach ( (array) $op['r'] as $r ) { if ( is_array( $v ) ) { foreach ( $v as $kk => $vv ) { if ( is_string( $vv ) && false !== strpos( $vv, $r[0] ) ) { $v[ $kk ] = str_replace( $r[0], $r[1], $vv ); $n++; } } } elseif ( is_string( $v ) && false !== strpos( $v, $r[0] ) ) { $v = str_replace( $r[0], $r[1], $v ); $n++; } }
+				if ( $n ) { $log[] = $pid . ' ' . $k . ' x' . $n; if ( empty( $op['dry'] ) ) { update_post_meta( $pid, $k, is_array( $v ) ? $v : wp_slash( $v ) ); } }
+			}
+		}
+		return array( 'summary' => $log );
+	}
 	if ( 'grep899' === $fn ) {
 		// Kun læsning: find mønster i posts (indhold, titel, uddrag), postmeta, options, Fluent Forms og nordic-filer. q = tekst.
 		global $wpdb; $q = $op['q']; $o = array(); $like = '%' . $wpdb->esc_like( $q ) . '%';
