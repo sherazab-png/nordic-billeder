@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nordic kvalitet
  * Description: SEO- og kvalitetstillæg for Nordic-sites: strukturerede data (klinik, brødkrumme, FAQ), Open Graph, billedattributter, brødkrumme-navigation, sikkerhedsheaders, sitemap og oprydning i WordPress-standarder. Ændrer ingen synlig tekst.
- * Version: 1.2
+ * Version: 1.3
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
@@ -505,6 +505,7 @@ if ( ! function_exists( 'nordic_samtykke_id' ) ) {
 			. '.nsk button:hover{filter:brightness(1.1)}'
 			. '.nsk button:focus-visible,.nsk a:focus-visible,.nsk-indst:focus-visible{outline:2px solid #C79A5B;outline-offset:2px}'
 			. '@media(min-width:768px){.elementor-element-6c1480a>a.e-button-base,.elementor-element-37e878f3>a.e-button-base{align-self:flex-start;min-width:240px}}'
+			. '.elementor .elementor-element.elementor-element-3044cde3,.elementor .elementor-element.elementor-element-1e095342,.elementor .elementor-element.elementor-element-778460e0,.elementor .elementor-element.elementor-element-48e4f160,.elementor .elementor-element.elementor-element-759dc684{padding-block-end:0!important}.elementor .elementor-element.elementor-element-d9a214e,.elementor .elementor-element.elementor-element-3e948f6,.elementor .elementor-element.elementor-element-41104df,.elementor .elementor-element.elementor-element-022ce3b,.elementor .elementor-element.elementor-element-9adfdb0{padding-block-start:20px!important}'
 			. '.nsk-indst{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}'
 			. '@media(max-width:600px){.nsk{padding:8px 12px;font-size:12px}.nsk p{text-align:center}.nsk button{min-height:40px;padding:8px 12px}}'
 			. '</style>' . "\n";
