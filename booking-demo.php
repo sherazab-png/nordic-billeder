@@ -1,6 +1,6 @@
 <?php
 /**
- * Testside: prototype af online booking (Basis helkrops-DEXA, 899 kr.).
+ * Testside: prototype af online booking (Basis helkrops-DEXA, 999 kr.).
  * Kun visuel prototype. Ingen data sendes eller gemmes, ingen betaling.
  * Shortcoden vises kun for indloggede redaktører, så intet bliver synligt for besøgende,
  * selv hvis siden ved en fejl bliver udgivet.
@@ -83,7 +83,7 @@ add_shortcode( 'nordic_booking_demo', function () {
 	<div>
 		<h1>Book Basis helkrops-DEXA</h1>
 		<p class="nbd-lead">Præcis kortlægning af din kropssammensætning med lægefaglig vurdering. Ingen henvisning, ingen ventetid.</p>
-		<span class="nbd-price">899 kr.</span>
+		<span class="nbd-price">999 kr.</span>
 	</div>
 	<ul class="nbd-chk">
 		<li>Helkrops DEXA-scanning</li>
@@ -167,7 +167,7 @@ add_shortcode( 'nordic_booking_demo', function () {
 		</div>
 
 		<aside class="nbd-sum" aria-label="Din booking">
-			<div class="nbd-row"><span>Basis helkrops-DEXA</span><b>899 kr.</b></div>
+			<div class="nbd-row"><span>Basis helkrops-DEXA</span><b>999 kr.</b></div>
 			<dl>
 				<div><dt>Tid</dt><dd id="nbd-st">Ikke valgt</dd></div>
 				<div><dt>Sted</dt><dd>Nordic DEXA Scan<br>Laurits Olsens Vej 1, 1. sal<br>2650 Hvidovre</dd></div>
@@ -200,7 +200,7 @@ function show(){
  qa('.nbd-pane').forEach(function(p){p.hidden=+p.dataset.p!==step;});
  qa('.nbd-steps li').forEach(function(l){var s=+l.dataset.s;l.className=s===step?'on':(s<step?'done':'');});
  q('#nbd-back').hidden=step===1||step===5;
- var n=q('#nbd-next');n.hidden=step===5;n.textContent=step===4?'Reserver 899 kr. (demo)':'Videre';n.disabled=!valid();}
+ var n=q('#nbd-next');n.hidden=step===5;n.textContent=step===4?'Reserver 999 kr. (demo)':'Videre';n.disabled=!valid();}
 function cal(){
  var y=view.getFullYear(),m=view.getMonth(),t=new Date();t.setHours(0,0,0,0);
  q('#nbd-mon').textContent=MON[m]+' '+y;var first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate(),h='<tr>';
