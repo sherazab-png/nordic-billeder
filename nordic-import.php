@@ -1173,6 +1173,28 @@ function nordic_imp_run( $op, &$st ) {
 		}
 		return array( 'summary' => $log );
 	}
+	if ( 'proaudit' === $fn ) {
+		// Kun læsning: hvilke Elementor Pro-funktioner bruges (widgets, skabeloner, betingelser, formularindsendelser).
+		global $wpdb; $w = array(); $per = array();
+		$rows = $wpdb->get_results( "SELECT p.ID, p.post_type, p.post_status, p.post_title, m.meta_value FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status IN ('publish','draft','private') AND p.post_type NOT IN ('revision')" );
+		foreach ( $rows as $r ) {
+			$t = json_decode( $r->meta_value, true ); if ( ! is_array( $t ) ) { continue; }
+			$walk = function ( $els ) use ( &$walk, &$w, &$per, $r ) {
+				foreach ( $els as $e ) {
+					$k = isset( $e['widgetType'] ) ? $e['widgetType'] : ( isset( $e['elType'] ) ? 'el:' . $e['elType'] : '?' );
+					$w[ $k ] = ( isset( $w[ $k ] ) ? $w[ $k ] : 0 ) + 1;
+					$per[ $k ][ $r->ID ] = $r->post_type . '/' . $r->post_status . ' ' . $r->post_title;
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
+				}
+			};
+			$walk( $t );
+		}
+		arsort( $w );
+		$tpl = $wpdb->get_results( "SELECT p.ID, p.post_title, p.post_status, (SELECT meta_value FROM $wpdb->postmeta WHERE post_id=p.ID AND meta_key='_elementor_template_type') AS type, (SELECT meta_value FROM $wpdb->postmeta WHERE post_id=p.ID AND meta_key='_elementor_conditions') AS cond FROM $wpdb->posts p WHERE p.post_type='elementor_library'", ARRAY_A );
+		$sub = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->prefix . 'e_submissions' ) ) ? (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}e_submissions" ) : -1;
+		$small = array(); foreach ( $per as $k => $v ) { if ( count( $v ) <= 12 ) { $small[ $k ] = $v; } else { $small[ $k ] = count( $v ) . ' poster'; } }
+		return array( 'summary' => array( 'widgets' => $w, 'where' => $small, 'templates' => $tpl, 'pro_conditions' => get_option( 'elementor_pro_theme_builder_conditions' ), 'submissions' => $sub, 'plugins' => get_option( 'active_plugins' ), 'pro_ver' => defined( 'ELEMENTOR_PRO_VERSION' ) ? ELEMENTOR_PRO_VERSION : null, 'el_ver' => defined( 'ELEMENTOR_VERSION' ) ? ELEMENTOR_VERSION : null ) );
+	}
 	if ( 'grep899' === $fn ) {
 		// Kun læsning: find mønster i posts (indhold, titel, uddrag), postmeta, options, Fluent Forms og nordic-filer. q = tekst.
 		global $wpdb; $q = $op['q']; $o = array(); $like = '%' . $wpdb->esc_like( $q ) . '%';
