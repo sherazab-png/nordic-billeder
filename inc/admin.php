@@ -121,8 +121,9 @@ function nb_admin_detail( $id ) {
 		nb_log( $b->id, 'view_health', '' );
 		if ( ! $v ) { echo '<b style="color:#b32d2e">Kan ikke dekrypteres (nøglen mangler eller er ændret).</b>'; }
 		else {
-			$f = array( 'kost' => 'Kostomlægning eller vægttab', 'sport' => 'Optimering af sportspræstation', 'opf' => 'Opfølgning efter sygdom eller behandling', 'andet' => 'Andet' );
-			echo 'Formål: <b>' . esc_html( $f[ $v['formaal'] ] ?? $v['formaal'] ) . '</b><br>Gravid: ' . esc_html( $v['gravid'] ) . '<br>Over 197 cm eller 159 kg: ' . esc_html( $v['graense'] ) . '<br>Bemærkning: ' . ( '' !== $v['note'] ? nl2br( esc_html( $v['note'] ) ) : '<i>ingen</i>' );
+			echo ( nb_visit_flag( $v ) ? '<p style="color:#b32d2e"><b>OBS: Svarene kræver lægefaglig opfølgning før scanningen.</b></p>' : '' ) . '<table class="widefat striped" style="max-width:780px">';
+			foreach ( nb_visit_lines( $v ) as $l ) { echo '<tr><th style="width:230px">' . esc_html( $l[0] ) . '</th><td>' . nl2br( esc_html( $l[1] ) ) . '</td></tr>'; }
+			echo '</table>';
 			echo '<p class="description">Opbevares krypteret og slettes ' . esc_html( $b->purge_after ? nb_local( $b->purge_after, 'd.m.Y' ) : '-' ) . '. Overfør berettigelsen til journalen inden da.</p>';
 		}
 	}

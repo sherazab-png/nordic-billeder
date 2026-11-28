@@ -85,23 +85,7 @@ add_shortcode( 'nordic_booking', function () {
 				<h2>Supplerende spørgsmål</h2>
 				<p class="nbd-ok-pay" id="nbd-paid" hidden>Tak - din betaling er modtaget. Besvar de supplerende spørgsmål, så lægen kan godkende din scanning. Det tager kun et par minutter.</p>
 				<p class="nbd-hint" style="margin:0 0 14px">Det er et krav i strålebeskyttelseslovgivningen, at en DEXA-scanning skal være berettiget. Dine svar læses kun af klinikkens sundhedspersonale.</p>
-				<fieldset><legend>Hvad er formålet med scanningen?</legend>
-					<label class="opt"><input type="radio" name="nbd_f" value="kost"> Kostomlægning eller vægttab</label>
-					<label class="opt"><input type="radio" name="nbd_f" value="sport"> Optimering af sportspræstation</label>
-					<label class="opt"><input type="radio" name="nbd_f" value="opf"> Opfølgning efter sygdom eller behandling</label>
-					<label class="opt"><input type="radio" name="nbd_f" value="andet"> Andet</label>
-				</fieldset>
-				<fieldset><legend>Er du gravid?</legend>
-					<label class="opt"><input type="radio" name="nbd_g" value="nej"> Nej</label>
-					<label class="opt"><input type="radio" name="nbd_g" value="ja"> Ja</label>
-					<div class="nbd-stop" data-stop="g" hidden>DEXA-scanning udføres ikke under graviditet. Send gerne svaret alligevel: lægen kontakter dig, og kan scanningen ikke udføres, refunderer vi hele beløbet.</div>
-				</fieldset>
-				<fieldset><legend>Er du over 197 cm eller over 159 kg?</legend>
-					<label class="opt"><input type="radio" name="nbd_h" value="nej"> Nej</label>
-					<label class="opt"><input type="radio" name="nbd_h" value="ja"> Ja</label>
-					<div class="nbd-stop" data-stop="h" hidden>Scanneren giver de mest nøjagtige resultater op til 197 cm og 159 kg. Lægen kontakter dig om den rigtige løsning.</div>
-				</fieldset>
-				<div class="fld"><label for="nbd-x">Er der andet, lægen bør vide? (valgfrit)</label><textarea id="nbd-x" rows="3" maxlength="1000"></textarea><span class="nbd-hint">Skriv kun det nødvendige.</span></div>
+				<?php echo nb_visit_form_html(); // phpcs:ignore ?>
 			</section>
 			<div class="nbd-err" id="nbd-err" role="alert" hidden></div>
 			<div class="nbd-btns">

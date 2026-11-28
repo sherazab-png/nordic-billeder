@@ -112,18 +112,16 @@ function nb_rest_visit( WP_REST_Request $r ) {
 	if ( $b->visit_at ) { return nb_err( 'nb_done', 'Dine svar er allerede modtaget. Ring til os, hvis du vil rette noget.', 409 ); }
 	if ( ! in_array( $b->status, array( 'hold', 'paid' ), true ) ) { return nb_err( 'nb_state', 'Bookingen er ikke aktiv.', 409 ); }
 	$v = (array) ( $p['visit'] ?? array() );
-	$formaal = (string) ( $v['formaal'] ?? '' );
-	$gravid = (string) ( $v['gravid'] ?? '' ); $graense = (string) ( $v['graense'] ?? '' );
-	if ( ! in_array( $formaal, array( 'kost', 'sport', 'opf', 'andet' ), true ) || ! in_array( $gravid, array( 'ja', 'nej' ), true ) || ! in_array( $graense, array( 'ja', 'nej' ), true ) ) { return nb_err( 'nb_val', 'Besvar alle spørgsmål.', 422 ); }
-	$note = mb_substr( sanitize_textarea_field( (string) ( $v['note'] ?? '' ) ), 0, 1000 );
-	$enc = nb_encrypt( array( 'formaal' => $formaal, 'gravid' => $gravid, 'graense' => $graense, 'note' => $note, 'v' => 2 ) );
+	$d = nb_visit_parse( $v );
+	if ( is_wp_error( $d ) ) { return nb_err( 'nb_val', $d->get_error_message(), 422 ); }
+	$enc = nb_encrypt( $d );
 	if ( false === $enc ) { return nb_err( 'nb_off', 'Teknisk fejl. Ring til os.', 503 ); }
 	$n = $wpdb->query( $wpdb->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET visit=%s, visit_at=%s, updated_at=%s WHERE id=%d AND visit_at IS NULL', $enc, nb_now(), nb_now(), $b->id ) );
 	if ( 1 !== (int) $n ) { return nb_err( 'nb_done', 'Dine svar er allerede modtaget.', 409 ); }
 	nb_log( $b->id, 'visit', 'modtaget' );
 	$b = nb_get( 'id', $b->id );
 	if ( 'paid' === $b->status ) { if ( $b->clinic_mail_at ) { nb_mail_clinic_answers( $b ); } else { nb_mail_clinic_new( $b ); } }
-	return array( 'ok' => 1, 'flag' => ( 'ja' === $gravid || 'ja' === $graense ) );
+	return array( 'ok' => 1, 'flag' => nb_visit_flag( $d, true ) );
 }
 
 function nb_rest_cancel( WP_REST_Request $r ) {

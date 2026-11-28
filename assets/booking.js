@@ -8,6 +8,13 @@
 	var MON = ['januar', 'februar', 'marts', 'april', 'maj', 'juni', 'juli', 'august', 'september', 'oktober', 'november', 'december'];
 	function q(s) { return R.querySelector(s); }
 	function qa(s) { return R.querySelectorAll(s); }
+	function vs(n) { return Array.prototype.map.call(R.querySelectorAll('input[name=' + n + ']:checked'), function (e) { return e.value; }); }
+	function val(id) { var e = q('#' + id); return e ? e.value : ''; }
+	function visit() {
+		var f = vs('nbv_formaal'), t = {};
+		f.forEach(function (k) { t[k] = val('nbv-f-' + k); });
+		return { hoejde: parseInt(val('nbv-hoejde'), 10) || 0, vaegt: parseFloat(String(val('nbv-vaegt')).replace(',', '.')) || 0, henvist: v('nbv_henvist'), henviser: val('nbv-henviser'), gravid: v('nbv_gravid'), billed: v('nbv_billed'), billedtekst: val('nbv-billedtekst'), helbred: vs('nbv_helbred'), helbredtekst: val('nbv-helbredtekst'), formaal: f, formaaltekst: t, samtykke: vs('nbv_samtykke'), note: val('nbv-note') };
+	}
 	function v(n) { var e = R.querySelector('input[name=' + n + ']:checked'); return e ? e.value : ''; }
 	function pad(n) { return (n < 10 ? '0' : '') + n; }
 	function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -22,8 +29,14 @@
 		if (step === 1) { return !!sel.slot; }
 		if (step === 2) { return q('#nbd-n').value.trim().length > 1 && /\S+@\S+\.\S+/.test(q('#nbd-e').value) && q('#nbd-t').value.replace(/\D/g, '').length >= 8 && /^\d{6}-\d{4}$/.test(q('#nbd-c').value) && q('#nbd-ok').checked; }
 		if (step === 4) {
-			q('[data-stop=g]').hidden = v('nbd_g') !== 'ja'; q('[data-stop=h]').hidden = v('nbd_h') !== 'ja';
-			return !busy && !!v('nbd_f') && !!v('nbd_g') && !!v('nbd_h');
+			var V = visit(), hv = V.hoejde > 197 || V.vaegt > 159;
+			q('[data-stop=g]').hidden = V.gravid !== 'ja'; q('[data-stop=hv]').hidden = !hv;
+			R.querySelectorAll('[data-if]').forEach(function (e) {
+				var k = e.dataset.if, on = k === 'henvist' ? V.henvist === 'ja' : k === 'billed' ? V.billed === 'ja' : k === 'helbred' ? V.helbred.length > 0 : V.formaal.indexOf(k.slice(2)) > -1;
+				e.hidden = !on;
+			});
+			var txt = V.formaal.every(function (k) { return (V.formaaltekst[k] || '').trim().length > 2; });
+			return !busy && V.hoejde >= 100 && V.hoejde <= 230 && V.vaegt >= 30 && V.vaegt <= 300 && !!V.henvist && !!V.gravid && !!V.billed && V.formaal.length > 0 && txt && V.samtykke.length === 3;
 		}
 		return !busy;
 	}
@@ -80,7 +93,7 @@
 	}
 	function sendVisit() {
 		busy = true; show(); err('');
-		post('visit', { ref: ref, visit: { formaal: v('nbd_f'), gravid: v('nbd_g'), graense: v('nbd_h'), note: q('#nbd-x').value } })
+		post('visit', { ref: ref, visit: visit() })
 			.then(function (x) {
 				busy = false;
 				if (x.ok) {
