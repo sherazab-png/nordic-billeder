@@ -49,7 +49,7 @@ function nb_do_action( $b, $act, $amt = null ) {
 			if ( $ok && $nb->gift_id ) { nb_gift_mark_refunded( $nb->gift_id, 'afvist' ); }
 			if ( ! $ok ) { nb_transition( $nb, array( 'rejected' ), 'refund_failed' ); }
 			nb_release_slot( $nb );
-			$msg = $ok ? ( nb_mail_rejected( nb_get( 'id', $id ) ) ? 'Afvist, refunderet og patienten informeret.' : 'Afvist og refunderet, men e-mailen fejlede.' ) : 'Afvist, men refusionen fejlede. Se loggen og refunder i Stripe.';
+			$msg = $ok ? ( nb_mail_rejected( nb_get( 'id', $id ) ) ? 'Afvist, refunderet og patienten informeret.' : 'Afvist og refunderet, men e-mailen fejlede.' ) : 'Afvist, men refusionen fejlede. Se loggen og refunder i ' . nb_pay_name() . '.';
 		} else { $msg = 'Kunne ikke afvise (status er ændret).'; }
 	} elseif ( 'cancel' === $act ) {
 		$nb = nb_transition( $b, array( 'paid', 'approved' ), 'cancelled', array( 'decided_at' => nb_now(), 'decided_by' => get_current_user_id() ) );
@@ -108,7 +108,7 @@ function nb_admin_detail( $id ) {
 	echo '<tr><th>Tid</th><td>' . esc_html( nb_human( $b->starts_utc ) ) . '</td></tr>';
 	echo '<tr><th>Navn</th><td>' . esc_html( $b->name ) . '</td></tr><tr><th>E-mail</th><td>' . esc_html( $b->email ) . '</td></tr><tr><th>Telefon</th><td>' . esc_html( $b->phone ) . '</td></tr>';
 	if ( current_user_can( 'nb_view_health' ) ) { $c = nb_decrypt( $b->cpr ); echo '<tr><th>Fødselsdato (CPR)</th><td>' . esc_html( $c['cpr'] ?? ( $b->cpr ? 'kan ikke dekrypteres' : 'slettet' ) ) . '</td></tr>'; }
-	echo ( $b->receipt_url ? '<tr><th>Kvittering</th><td><a href="' . esc_url( $b->receipt_url ) . '" target="_blank" rel="noopener">Stripe-kvittering</a></td></tr>' : '' ) . '<tr><th>Klinikmail</th><td>' . esc_html( $b->clinic_mail_at ? nb_local( $b->clinic_mail_at, 'd.m.Y H:i' ) : 'ikke sendt' ) . '</td></tr>';
+	echo ( $b->receipt_url ? '<tr><th>Kvittering</th><td><a href="' . esc_url( $b->receipt_url ) . '" target="_blank" rel="noopener">Kvittering</a></td></tr>' : '' ) . '<tr><th>Klinikmail</th><td>' . esc_html( $b->clinic_mail_at ? nb_local( $b->clinic_mail_at, 'd.m.Y H:i' ) : 'ikke sendt' ) . '</td></tr>';
 	echo '<tr><th>Betaling</th><td>' . esc_html( number_format( $b->amount / 100, 2, ',', '.' ) ) . ' kr.' . ( $b->refunded ? ', refunderet ' . esc_html( number_format( $b->refunded / 100, 2, ',', '.' ) ) . ' kr.' : '' ) . ( $b->pi_id ? '<br><code>' . esc_html( $b->pi_id ) . '</code>' : '' ) . '</td></tr>';
 	echo '<tr><th>Bookingnummer</th><td><code>' . esc_html( $b->ref ) . '</code></td></tr>';
 	echo '<tr><th>E-mail-status</th><td>' . esc_html( $b->mail_state ?: '-' ) . '</td></tr>';
@@ -223,9 +223,10 @@ function nb_admin_settings() {
 	echo '<tr><th>Privatlivspolitik (URL)</th><td><input type="url" name="privacy_url" value="' . esc_attr( $s['privacy_url'] ) . '" class="regular-text"></td></tr>';
 	echo '</table><p><button class="button button-primary">Gem</button></p></form>';
 	echo '<h2>Status</h2><ul>';
-	echo '<li>Betaling: ' . ( nb_mock() ? 'testtilstand uden Stripe' : ( nb_payments_ready() ? ( nb_live_key() ? '<b>LIVE</b>' : 'Stripe testnøgle' ) : '<b>lukket</b> (nøgler mangler)' ) ) . '</li>';
+	echo '<li>Betaling: ' . ( nb_mock() ? 'testtilstand uden betalingsudbyder' : ( nb_payments_ready() ? ( nb_live_key() ? '<b>LIVE</b> (' . nb_pay_name() . ')' : nb_pay_name() . ' testkonto' ) : '<b>lukket</b> (' . nb_pay_name() . '-nøgler mangler)' ) ) . '</li>';
 	echo '<li>Krypteringsnøgle: ' . ( nb_key() ? 'ok (uden for webroden)' : '<b>mangler</b>' ) . '</li>';
-	echo '<li>Webhook-adresse: <code>' . esc_html( rest_url( 'nordic-booking/v1/stripe' ) ) . '</code></li>';
+	echo '<li>Betalingsudbyder: ' . esc_html( nb_pay_name() ) . '</li>';
+	echo 'sumup' === nb_provider() ? '<li>SumUp-webhook: sættes automatisk på hver betaling</li>' : '<li>Webhook-adresse: <code>' . esc_html( rest_url( 'nordic-booking/v1/stripe' ) ) . '</code></li>';
 	echo '<li>Næste oprydning: ' . esc_html( wp_next_scheduled( 'nb_cron_5' ) ? nb_local( gmdate( 'Y-m-d H:i:s', wp_next_scheduled( 'nb_cron_5' ) ), 'd.m H:i' ) : 'ikke planlagt' ) . '</li></ul></div>';
 }
 

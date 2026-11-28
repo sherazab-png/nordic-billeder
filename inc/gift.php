@@ -118,7 +118,7 @@ function nb_mail_gift( $g ) {
 		. "Se og udskriv gavekortet:\n" . nb_gift_view_url( $g ) . "\n\n"
 		. "Sådan bruges det: Book en tid på " . $book . " og skriv koden under \"Betaling\". Der skal ikke betales mere.\n\n"
 		. "Kan scanningen ikke godkendes efter lægefaglig vurdering, refunderer vi beløbet til dig som køber.\n\n"
-		. "Din kvittering kommer i en separat e-mail fra Stripe." . nb_sig(), array( 'Content-Type: text/plain; charset=UTF-8' ) );
+		. ( 'sumup' === nb_provider() ? 'Kvittering: ' . number_format( $g->amount / 100, 2, ',', '.' ) . ' kr. er betalt med kort via SumUp den ' . nb_local( $g->paid_at, 'd.m.Y' ) . '.' : 'Din kvittering kommer i en separat e-mail fra Stripe.' ) . nb_sig(), array( 'Content-Type: text/plain; charset=UTF-8' ) );
 }
 
 /* ---------- Indløsning ved booking ---------- */

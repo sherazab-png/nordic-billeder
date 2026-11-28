@@ -152,7 +152,7 @@ function nb_rest_mock_page( WP_REST_Request $r ) {
 	header( 'Content-Type: text/html; charset=utf-8' ); header( 'Cache-Control: no-store' );
 	$act = esc_url( rest_url( 'nordic-booking/v1/mock/act' ) );
 	echo '<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Testbetaling</title><body style="font:16px system-ui;max-width:520px;margin:40px auto;padding:0 16px">';
-	echo '<p style="background:#B42318;color:#fff;padding:8px;border-radius:6px">TESTTILSTAND - ingen rigtig betaling. Erstattes af Stripe Checkout, når testnøgler er indsat.</p>';
+	echo '<p style="background:#B42318;color:#fff;padding:8px;border-radius:6px">TESTTILSTAND - ingen rigtig betaling. Erstattes af ' . esc_html( nb_pay_name() ) . 's betalingsside, når testnøgler er indsat.</p>';
 	if ( ! $cs ) { echo '<p>Ukendt session.</p>'; exit; }
 	echo '<h1>Betal ' . esc_html( number_format( $cs['amount_total'] / 100, 2, ',', '.' ) ) . ' kr.</h1><p>Status: ' . esc_html( $cs['status'] ) . '</p>';
 	foreach ( array( 'pay' => 'Betal (gennemført)', 'pay_dup' => 'Betal og send webhook to gange', 'pay_nohook' => 'Betal, men webhook går tabt', 'cancel' => 'Fortryd og gå tilbage' ) as $k => $l ) {
