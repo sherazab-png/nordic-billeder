@@ -5,11 +5,32 @@
    Testkonto: define( 'NORDIC_SUMUP_SANDBOX', true ). Rigtig konto kræver desuden NORDIC_BOOKING_LIVE. */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-function nb_provider() { return ( defined( 'NORDIC_PAY_PROVIDER' ) && 'sumup' === NORDIC_PAY_PROVIDER ) ? 'sumup' : 'stripe'; }
-function nb_pay_name() { return 'sumup' === nb_provider() ? 'SumUp' : 'Stripe'; }
+function nb_provider() {
+	$p = defined( 'NORDIC_PAY_PROVIDER' ) ? (string) NORDIC_PAY_PROVIDER : 'stripe';
+	return in_array( $p, array( 'sumup', 'mobilepay', 'mobilepay+sumup' ), true ) ? $p : 'stripe';
+}
+/* Betalingsmåder, patienten kan vælge imellem: stripe, sumup (kort), mobilepay. */
+function nb_methods() { $p = nb_provider(); return 'mobilepay+sumup' === $p ? array( 'mobilepay', 'sumup' ) : array( $p ); }
+function nb_method_label( $m ) { return array( 'mobilepay' => 'MobilePay', 'sumup' => 'Betalingskort', 'stripe' => 'Kort eller MobilePay' )[ $m ] ?? $m; }
+/* Valgt betalingsmåde for den betaling, der oprettes nu (sættes af booking- og gavekortkaldet). */
+function nb_set_method( $m ) { $ms = nb_methods(); $GLOBALS['nb_pay_method'] = in_array( $m, $ms, true ) ? $m : $ms[0]; return $GLOBALS['nb_pay_method']; }
+function nb_pay_name() { return implode( ' og ', array_map( function ( $m ) { return array( 'mobilepay' => 'MobilePay', 'sumup' => 'SumUp', 'stripe' => 'Stripe' )[ $m ]; }, nb_methods() ) ); }
+function nb_paid_via( $pi ) { return nb_mp_is( $pi ) ? 'MobilePay' : ( 'stripe' === nb_provider() ? 'Stripe' : 'kort via SumUp' ); }
+function nb_pay_hint() { $p = nb_provider(); return 'sumup' === $p ? 'kort' : ( 'mobilepay' === $p ? 'MobilePay' : 'kort eller MobilePay' ); }
+/* Valg af betalingsmåde i formularerne (kun når der er mere end én). */
+function nb_method_picker() {
+	$ms = nb_methods(); if ( count( $ms ) < 2 ) { return ''; }
+	$h = '<fieldset class="nbd-pm"><legend>Vælg betaling</legend>';
+	foreach ( $ms as $i => $m ) { $h .= '<label class="opt"><input type="radio" name="nbpm" value="' . esc_attr( $m ) . '"' . ( 0 === $i ? ' checked' : '' ) . '> <span>' . esc_html( nb_method_label( $m ) ) . '</span></label>'; }
+	return $h . '</fieldset>';
+}
 function nb_su_key() { return defined( 'NORDIC_SUMUP_API_KEY' ) ? (string) NORDIC_SUMUP_API_KEY : ''; }
 function nb_su_mc() { return defined( 'NORDIC_SUMUP_MERCHANT' ) ? (string) NORDIC_SUMUP_MERCHANT : ''; }
 function nb_su_sandbox() { return defined( 'NORDIC_SUMUP_SANDBOX' ) && NORDIC_SUMUP_SANDBOX; }
+function nb_pay_ready() {
+	foreach ( nb_methods() as $m ) { if ( 'sumup' === $m && ! nb_su_ready() ) { return false; } if ( 'mobilepay' === $m && ! nb_mp_ready() ) { return false; } }
+	return true;
+}
 function nb_su_ready() {
 	if ( '' === nb_su_key() || '' === nb_su_mc() || ! nb_key() ) { return false; }
 	return nb_su_sandbox() || ( defined( 'NORDIC_BOOKING_LIVE' ) && NORDIC_BOOKING_LIVE );
@@ -106,7 +127,7 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'nordic-booking/v1', '/sumup', array( 'methods' => 'POST', 'permission_callback' => '__return_true', 'callback' => 'nb_rest_sumup_hook' ) );
 } );
 function nb_rest_sumup_hook( WP_REST_Request $r ) {
-	if ( 'sumup' !== nb_provider() || ! hash_equals( nb_su_hook_token(), (string) $r->get_param( 't' ) ) ) { return new WP_REST_Response( array( 'result' => 'afvist' ), 403 ); }
+	if ( ! in_array( 'sumup', nb_methods(), true ) || ! hash_equals( nb_su_hook_token(), (string) $r->get_param( 't' ) ) ) { return new WP_REST_Response( array( 'result' => 'afvist' ), 403 ); }
 	$j = json_decode( $r->get_body(), true );
 	$id = is_array( $j ) ? (string) ( $j['id'] ?? ( $j['payload']['checkout_id'] ?? '' ) ) : '';
 	if ( '' === $id || ! preg_match( '/^[A-Za-z0-9-]{8,64}$/', $id ) ) { return new WP_REST_Response( array( 'result' => 'ugyldig' ), 400 ); }
@@ -136,7 +157,7 @@ function nb_sumup_sync( $checkout_id ) {
 
 /* Patienten kommer tilbage via "Tilbage til butikken" (redirect_url): synkroniser med det samme i stedet for at vente på webhooken. */
 add_action( 'template_redirect', function () {
-	if ( 'sumup' !== nb_provider() || empty( $_GET['ref'] ) || ! ( isset( $_GET['nb'] ) || isset( $_GET['gk'] ) ) ) { return; }
+	if ( 'stripe' === nb_provider() || nb_mock() || empty( $_GET['ref'] ) || ! ( isset( $_GET['nb'] ) || isset( $_GET['gk'] ) ) ) { return; }
 	$ref = sanitize_text_field( wp_unslash( $_GET['ref'] ) );
 	$b = isset( $_GET['nb'] ) ? nb_get( 'ref', $ref ) : null;
 	$g = isset( $_GET['gk'] ) && function_exists( 'nb_gift_get' ) ? nb_gift_get( 'ref', $ref ) : null;

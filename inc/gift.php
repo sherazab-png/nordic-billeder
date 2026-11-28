@@ -35,7 +35,7 @@ add_action( 'nb_install_tables', function ( $c ) {
 function nb_gift_hash( $code ) { return hash_hmac( 'sha256', strtoupper( preg_replace( '/[^A-Za-z0-9]/', '', (string) $code ) ), wp_salt( 'auth' ) . 'nb-gift' ); }
 function nb_gift_get( $field, $val ) {
 	global $wpdb;
-	if ( ! in_array( $field, array( 'id', 'ref', 'code_hash', 'pi_id', 'booking_id' ), true ) || '' === (string) $val ) { return null; }
+	if ( ! in_array( $field, array( 'id', 'ref', 'code_hash', 'pi_id', 'booking_id', 'session_id' ), true ) || '' === (string) $val ) { return null; }
 	return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . nb_t( 'gifts' ) . " WHERE $field=%s", $val ) );
 }
 function nb_gift_status_label( $s ) {
@@ -70,6 +70,7 @@ function nb_rest_gift_buy( WP_REST_Request $r ) {
 	$gid = (int) $wpdb->insert_id;
 	if ( ! $gid ) { return nb_err( 'nb_db', 'Teknisk fejl. Prøv igen.', 500 ); }
 	$ret = get_permalink( $page );
+	nb_set_method( (string) ( $p['method'] ?? '' ) );
 	$cs = nb_stripe( 'POST', 'checkout/sessions', array(
 		'mode' => 'payment', 'client_reference_id' => 'g_' . $ref, 'customer_email' => $email, 'locale' => 'da',
 		'expires_at' => time() + 30 * 60 + 5,
@@ -118,7 +119,7 @@ function nb_mail_gift( $g ) {
 		. "Se og udskriv gavekortet:\n" . nb_gift_view_url( $g ) . "\n\n"
 		. "Sådan bruges det: Book en tid på " . $book . " og skriv koden under \"Betaling\". Der skal ikke betales mere.\n\n"
 		. "Kan scanningen ikke godkendes efter lægefaglig vurdering, refunderer vi beløbet til dig som køber.\n\n"
-		. ( 'sumup' === nb_provider() ? 'Kvittering: ' . number_format( $g->amount / 100, 2, ',', '.' ) . ' kr. er betalt med kort via SumUp den ' . nb_local( $g->paid_at, 'd.m.Y' ) . '.' : 'Din kvittering kommer i en separat e-mail fra Stripe.' ) . nb_sig(), array( 'Content-Type: text/plain; charset=UTF-8' ) );
+		. ( 'stripe' !== nb_provider() ? 'Kvittering: ' . number_format( $g->amount / 100, 2, ',', '.' ) . ' kr. er betalt med ' . nb_paid_via( $g->pi_id ) . ' den ' . nb_local( $g->paid_at, 'd.m.Y' ) . '.' : 'Din kvittering kommer i en separat e-mail fra Stripe.' ) . nb_sig(), array( 'Content-Type: text/plain; charset=UTF-8' ) );
 }
 
 /* ---------- Indløsning ved booking ---------- */
@@ -264,6 +265,7 @@ add_shortcode( 'nordic_gavekort', function () {
 		<div class="nbd-hp" aria-hidden="true"><label>Lad dette felt stå tomt <input id="gk-hp" type="text" tabindex="-1" autocomplete="off"></label></div>
 		<div class="nbd-info" style="background:var(--bg2)">Gavekortet er gyldigt i 1 år fra købsdatoen og kan ikke ombyttes til kontanter. Modtageren booker selv tid og besvarer de supplerende spørgsmål. Kan scanningen ikke godkendes efter lægefaglig vurdering, refunderer vi beløbet til dig som køber. Tilbuddet er for voksne.</div>
 		<label class="opt" style="margin-top:12px"><input type="checkbox" id="gk-ok"> <span>Jeg har læst betingelserne for gavekort<?php echo $s['terms_url'] ? ' og <a href="' . esc_url( $s['terms_url'] ) . '" target="_blank" rel="noopener">handelsbetingelserne</a>' : ''; ?>.</span></label>
+		<?php echo nb_method_picker(); // phpcs:ignore ?>
 		<div class="nbd-err" id="gk-err" role="alert" hidden></div>
 		<div class="nbd-btns"><span></span><button type="button" class="b" id="gk-buy" disabled>Køb gavekort - <?php echo esc_html( $price ); ?></button></div>
 	<?php endif; ?>
@@ -277,7 +279,7 @@ var b=q('#gk-buy');if(!b)return;
 function ok(){b.disabled=!(q('#gk-n').value.trim().length>1&&/\S+@\S+\.\S+/.test(q('#gk-e').value)&&q('#gk-ok').checked);}
 R.addEventListener('input',ok);R.addEventListener('change',ok);
 b.addEventListener('click',function(){b.disabled=true;var e=q('#gk-err');e.hidden=true;
-fetch(api+'gift/buy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:q('#gk-n').value,email:q('#gk-e').value,recipient:q('#gk-r').value,message:q('#gk-m').value,accept:q('#gk-ok').checked,hp:q('#gk-hp').value,t:t,page:page})})
+fetch(api+'gift/buy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:q('#gk-n').value,email:q('#gk-e').value,recipient:q('#gk-r').value,message:q('#gk-m').value,accept:q('#gk-ok').checked,hp:q('#gk-hp').value,t:t,page:page,method:(q('input[name=nbpm]:checked')||{}).value||''})})
 .then(function(r){return r.json();}).then(function(j){if(j.url){location.href=j.url;return;}e.textContent=j.message||'Købet kunne ikke startes.';e.hidden=false;ok();}).catch(function(){e.textContent='Forbindelsen fejlede.';e.hidden=false;ok();});});
 })();
 </script>

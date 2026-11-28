@@ -73,7 +73,8 @@ add_shortcode( 'nordic_booking', function () {
 			</section>
 			<section class="nbd-pane" data-p="3" hidden>
 				<h2>Betaling</h2>
-				<p>Du sendes videre til en sikker betalingsside hos <?php echo esc_html( nb_pay_name() ); ?>, hvor du kan betale med <?php echo 'sumup' === nb_provider() ? 'kort' : 'kort eller MobilePay'; ?>.</p>
+				<p>Du sendes videre til en sikker betalingsside hos <?php echo esc_html( nb_pay_name() ); ?>, hvor du kan betale med <?php echo esc_html( nb_pay_hint() ); ?>.</p>
+				<?php echo nb_method_picker(); // phpcs:ignore ?>
 				<div class="nbd-info">Beløbet trækkes nu. Bagefter besvarer du nogle korte supplerende spørgsmål, og en læge vurderer, om scanningen er berettiget. <b>Kan scanningen ikke godkendes, refunderer vi hele beløbet.</b></div>
 				<p class="nbd-hint">Kortoplysninger indtastes kun hos <?php echo esc_html( nb_pay_name() ); ?> og gemmes aldrig hos os. Tiden holdes til dig i 30 minutter, mens du betaler.</p>
 				<details class="nbd-gift" id="nbd-gift"><summary>Har du et gavekort?</summary>
@@ -115,7 +116,7 @@ add_shortcode( 'nordic_booking', function () {
 				<div><dt>Sted</dt><dd><?php echo nl2br( esc_html( $s['address'] ) ); ?></dd></div>
 				<div><dt>Varighed</dt><dd>Selve scanningen tager ca. 10 minutter</dd></div>
 			</dl>
-			<p class="nbd-pay">Betaling med <?php echo 'sumup' === nb_provider() ? 'kort' : 'kort eller MobilePay'; ?> via <?php echo esc_html( nb_pay_name() ); ?>.</p>
+			<p class="nbd-pay">Betaling med <?php echo esc_html( nb_pay_hint() ); ?> via <?php echo esc_html( nb_pay_name() ); ?>.</p>
 		</aside>
 	</div>
 </div>

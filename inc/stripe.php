@@ -4,12 +4,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 function nb_secret() { return defined( 'NORDIC_STRIPE_SECRET' ) ? (string) NORDIC_STRIPE_SECRET : ''; }
 function nb_whsec() { return defined( 'NORDIC_STRIPE_WEBHOOK_SECRET' ) ? (string) NORDIC_STRIPE_WEBHOOK_SECRET : ( nb_mock() ? 'whsec_mock_' . wp_hash( 'nb-mock' ) : '' ); }
-function nb_mock() { return defined( 'NORDIC_BOOKING_MOCK' ) && NORDIC_BOOKING_MOCK && '' === nb_secret() && '' === nb_su_key() && 'production' !== wp_get_environment_type(); }
-function nb_live_key() { if ( 'sumup' === nb_provider() ) { return '' !== nb_su_key() && ! nb_su_sandbox(); } return 0 === strpos( nb_secret(), 'sk_live_' ) || 0 === strpos( nb_secret(), 'rk_live_' ); }
+function nb_mock() { return defined( 'NORDIC_BOOKING_MOCK' ) && NORDIC_BOOKING_MOCK && '' === nb_secret() && '' === nb_su_key() && ! nb_mp_has_keys() && 'production' !== wp_get_environment_type(); }
+function nb_live_key() { if ( 'stripe' !== nb_provider() ) { $l = false; foreach ( nb_methods() as $m ) { if ( 'sumup' === $m ) { $l = $l || ( '' !== nb_su_key() && ! nb_su_sandbox() ); } if ( 'mobilepay' === $m ) { $l = $l || ( nb_mp_has_keys() && ! nb_mp_test() ); } } return $l; } return 0 === strpos( nb_secret(), 'sk_live_' ) || 0 === strpos( nb_secret(), 'rk_live_' ); }
 /* Betaling er kun mulig med testnøgle, mock på testmiljø, eller livenøgle når NORDIC_BOOKING_LIVE er sat bevidst. */
 function nb_payments_ready() {
 	if ( nb_mock() ) { return true; }
-	if ( 'sumup' === nb_provider() ) { return nb_su_ready(); }
+	if ( 'stripe' !== nb_provider() ) { return nb_pay_ready(); }
 	if ( '' === nb_secret() || '' === nb_whsec() ) { return false; }
 	if ( nb_live_key() && ! ( defined( 'NORDIC_BOOKING_LIVE' ) && NORDIC_BOOKING_LIVE ) ) { return false; }
 	return (bool) nb_key();
@@ -17,7 +17,15 @@ function nb_payments_ready() {
 
 function nb_stripe( $method, $path, $params = array(), $idem = null ) {
 	if ( nb_mock() ) { return nb_mock_api( $method, $path, $params ); }
-	if ( 'sumup' === nb_provider() ) { return nb_sumup_compat( $method, $path, $params ); }
+	if ( 'stripe' !== nb_provider() ) {
+		// Flere udbydere: eksisterende betalinger genkendes på id'et (mp_...), nye på den valgte betalingsmåde.
+		$id = (string) ( $params['payment_intent'] ?? '' );
+		if ( '' === $id && preg_match( '#^checkout/sessions/([^/]+)#', $path, $x ) ) { $id = rawurldecode( $x[1] ); }
+		if ( '' === $id && 0 === strpos( $path, 'payment_intents/' ) ) { $id = rawurldecode( substr( $path, 16 ) ); }
+		if ( '' !== $id ) { return nb_mp_is( $id ) ? nb_mp_compat( $method, $path, $params ) : nb_sumup_compat( $method, $path, $params ); }
+		$m = $GLOBALS['nb_pay_method'] ?? nb_methods()[0];
+		return 'mobilepay' === $m ? nb_mp_compat( $method, $path, $params ) : nb_sumup_compat( $method, $path, $params );
+	}
 	if ( '' === nb_secret() ) { return new WP_Error( 'nb_nokey', 'Stripe-nøgle mangler' ); }
 	$args = array( 'method' => $method, 'timeout' => 30, 'headers' => array( 'Authorization' => 'Bearer ' . nb_secret() ) );
 	$url = 'https://api.stripe.com/v1/' . $path;

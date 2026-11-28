@@ -242,7 +242,7 @@ function nb_refund( $b, $amount, $reason ) {
 	$GLOBALS['wpdb']->query( $GLOBALS['wpdb']->prepare( 'UPDATE ' . nb_t( 'bookings' ) . ' SET refunded=LEAST(amount, GREATEST(refunded, %d)), updated_at=%s WHERE id=%d', (int) $b->refunded + $amt, nb_now(), $b->id ) );
 	nb_log( $b->id, 'refund', $amt . ' (' . $reason . ') ' . ( $r['id'] ?? '' ) );
 	// SumUp sender ingen refusions-webhook: marker gavekortet her, når hele beløbet er refunderet.
-	if ( 'sumup' === nb_provider() && ! nb_mock() && $b->gift_id && (int) $b->refunded + $amt >= (int) $b->amount ) { nb_gift_mark_refunded( $b->gift_id, 'booking' ); }
+	if ( 'stripe' !== nb_provider() && ! nb_mock() && $b->gift_id && (int) $b->refunded + $amt >= (int) $b->amount ) { nb_gift_mark_refunded( $b->gift_id, 'booking' ); }
 	return true;
 }
 

@@ -226,7 +226,7 @@ function nb_admin_settings() {
 	echo '<li>Betaling: ' . ( nb_mock() ? 'testtilstand uden betalingsudbyder' : ( nb_payments_ready() ? ( nb_live_key() ? '<b>LIVE</b> (' . nb_pay_name() . ')' : nb_pay_name() . ' testkonto' ) : '<b>lukket</b> (' . nb_pay_name() . '-nøgler mangler)' ) ) . '</li>';
 	echo '<li>Krypteringsnøgle: ' . ( nb_key() ? 'ok (uden for webroden)' : '<b>mangler</b>' ) . '</li>';
 	echo '<li>Betalingsudbyder: ' . esc_html( nb_pay_name() ) . '</li>';
-	echo 'sumup' === nb_provider() ? '<li>SumUp-webhook: sættes automatisk på hver betaling</li>' : '<li>Webhook-adresse: <code>' . esc_html( rest_url( 'nordic-booking/v1/stripe' ) ) . '</code></li>';
+	echo 'stripe' !== nb_provider() ? '<li>Webhook: sættes automatisk (' . esc_html( nb_pay_name() ) . ')</li>' : '<li>Webhook-adresse: <code>' . esc_html( rest_url( 'nordic-booking/v1/stripe' ) ) . '</code></li>';
 	echo '<li>Næste oprydning: ' . esc_html( wp_next_scheduled( 'nb_cron_5' ) ? nb_local( gmdate( 'Y-m-d H:i:s', wp_next_scheduled( 'nb_cron_5' ) ), 'd.m H:i' ) : 'ikke planlagt' ) . '</li></ul></div>';
 }
 

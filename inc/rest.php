@@ -86,6 +86,7 @@ function nb_rest_hold( WP_REST_Request $r ) {
 		}
 		return array( 'url' => add_query_arg( array( 'nb' => 'ok', 'ref' => $nb->ref ), get_permalink( $page ) ) );
 	}
+	nb_set_method( (string) ( $p['method'] ?? '' ) );
 	$cs = nb_create_checkout( $b, get_permalink( $page ) );
 	if ( is_wp_error( $cs ) || empty( $cs['url'] ) ) {
 		nb_log( $bid, 'checkout_error', is_wp_error( $cs ) ? $cs->get_error_message() : 'ingen url' );

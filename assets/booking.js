@@ -69,7 +69,7 @@
 
 	function pay() {
 		busy = true; show(); err('');
-		post('hold', { slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value, name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, cpr: q('#nbd-c').value, gift: gift, accept: q('#nbd-ok').checked })
+		post('hold', { slot_id: sel.slot, page: NB.page, t: NB.t, hp: q('#nbd-hp').value, name: q('#nbd-n').value, email: q('#nbd-e').value, phone: q('#nbd-t').value, cpr: q('#nbd-c').value, gift: gift, accept: q('#nbd-ok').checked, method: (q('input[name=nbpm]:checked') || {}).value || '' })
 			.then(function (x) {
 				if (x.ok && x.j.url) { window.location.href = x.j.url; return; }
 				busy = false;
@@ -136,6 +136,7 @@
 					if (st === 'ok') { try { if (window.gtag) { window.gtag('event', 'booking_completed'); } } catch (x) {} }
 				} else if (j.status === 'hold' && tries++ < 10) { setTimeout(poll, 2000); }
 				else if (j.status === 'hold') { toVisit(j, false); }
+				else if (j.status === 'expired' && st === 'ok') { result('Betalingen blev ikke gennemført', 'Tiden er frigivet igen. Du kan vælge en ny tid og prøve igen.'); }
 				else if (j.status) { result('Bookingen er ikke aktiv', 'Status: ' + j.label + '. Kontakt os, hvis du har spørgsmål.'); }
 				else { result('Ukendt booking', 'Linket er ikke gyldigt. Kontakt os, hvis du har spørgsmål.'); }
 			}).catch(function () { result('Tak', 'Du får en e-mail, når betalingen er registreret.'); });
