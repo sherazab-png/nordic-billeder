@@ -2,12 +2,15 @@
 /**
  * Plugin Name: Nordic DEXA optimering
  * Description: Hastighed og tilgængelighed for nordicdexascan.dk uden at ændre synlig tekst: forudindlæsning af hero-billede, hovedindhold-landmark og skiplink-mål, navne på logo-links og statusbjælker, ingen doven indlæsning af logo.
- * Version: 1.22
+ * Version: 1.23
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /* Testside til online booking (kun synlig for indloggede redaktører). */
 require_once __DIR__ . '/booking-demo.php';
+
+/* Gratis-tilstand: aktiv kun når Elementor Pro er slået fra. */
+require_once __DIR__ . '/fri-tilstand.php';
 
 
 /* Engelsk side: sidens egen H1 bruges, temaets sidetitel vises ikke (én H1). */
