@@ -306,6 +306,42 @@ function nordic_imp_golive( $fn, $op ) {
 function nordic_imp_run( $op, &$st ) {
 	$fn = $op['fn'] ?? 'ability';
 	if ( ! empty( $op['host'] ) && false === strpos( (string) wp_parse_url( home_url(), PHP_URL_HOST ), $op['host'] ) ) { return array( 'summary' => 'sprunget over (andet site)' ); }
+	if ( 'rawel' === $fn ) {
+		// Kun læsning: rå Elementor-data og udvalgte metadata for indlæg + tema og header/footer-plugins.
+		$o = array( 'theme' => get_stylesheet(), 'template' => get_template(), 'plugins' => get_option( 'active_plugins' ), 'hfe' => array( 'compat' => get_option( 'hfe_compatibility_option' ) ) );
+		foreach ( (array) $op['ids'] as $pid ) {
+			$m = array(); foreach ( (array) get_post_meta( (int) $pid ) as $k => $v ) { if ( '_elementor_data' !== $k && 0 !== strpos( $k, '_nordic_bk' ) && 0 !== strpos( $k, '_elementor_css' ) ) { $m[ $k ] = $v[0]; } }
+			$o[ $pid ] = array( 'title' => get_the_title( $pid ), 'type' => get_post_type( $pid ), 'status' => get_post_status( $pid ), 'meta' => $m, 'data' => json_decode( (string) get_post_meta( (int) $pid, '_elementor_data', true ), true ) );
+		}
+		return array( 'summary' => $o );
+	}
+	if ( 'setel' === $fn ) {
+		// Erstat hele Elementor-data for et indlæg (backup gemmes). post, data (array).
+		$pid = (int) $op['post']; $raw = (string) get_post_meta( $pid, '_elementor_data', true );
+		if ( ! is_array( $op['data'] ) ) { return array( 'error' => 'data mangler' ); }
+		if ( ! empty( $op['dry'] ) ) { return array( 'summary' => 'ville skrive ' . strlen( wp_json_encode( $op['data'] ) ) . ' tegn' ); }
+		update_post_meta( $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) );
+		update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $op['data'] ) ) ); delete_post_meta( $pid, '_elementor_css' );
+		return array( 'summary' => 'skrevet ' . $pid );
+	}
+	if ( 'mkhf' === $fn ) {
+		// Opret/opdater en skabelon (post_type, titel, status, meta, Elementor-data). key gør det idempotent.
+		$ex = get_posts( array( 'post_type' => $op['ptype'], 'post_status' => 'any', 'meta_key' => '_nordic_key', 'meta_value' => $op['key'], 'numberposts' => 1, 'fields' => 'ids' ) );
+		$pid = $ex ? (int) $ex[0] : wp_insert_post( array( 'post_type' => $op['ptype'], 'post_title' => $op['title'], 'post_status' => $op['status'] ?? 'publish' ) );
+		if ( ! $pid || is_wp_error( $pid ) ) { return array( 'error' => 'kunne ikke oprette' ); }
+		if ( $ex ) { wp_update_post( array( 'ID' => $pid, 'post_title' => $op['title'], 'post_status' => $op['status'] ?? 'publish' ) ); }
+		update_post_meta( $pid, '_nordic_key', $op['key'] );
+		foreach ( (array) ( $op['meta'] ?? array() ) as $k => $v ) { update_post_meta( $pid, $k, $v ); }
+		if ( isset( $op['data'] ) ) { update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $op['data'] ) ) ); update_post_meta( $pid, '_elementor_edit_mode', 'builder' ); delete_post_meta( $pid, '_elementor_css' ); }
+		return array( 'summary' => array( 'id' => $pid ) );
+	}
+	if ( 'plugin' === $fn ) {
+		// Aktivér/deaktivér plugin: file, on (bool).
+		require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		if ( ! empty( $op['on'] ) ) { $r = activate_plugin( $op['file'] ); return is_wp_error( $r ) ? array( 'error' => $r->get_error_message() ) : array( 'summary' => 'aktiveret ' . $op['file'] ); }
+		deactivate_plugins( $op['file'] ); return array( 'summary' => 'deaktiveret ' . $op['file'] );
+	}
+	if ( 'setopt' === $fn ) { update_option( $op['name'], $op['value'] ); return array( 'summary' => 'sat ' . $op['name'] ); }
 	if ( 'droptext' === $fn ) {
 		// Fjern det nærmeste overliggende element af typen 'type' (fx e-accordion eller e-div-block), som indeholder et element med præcis teksten 'text'. Kun ét match pr. post accepteres.
 		$pid = (int) $op['post']; $raw = (string) get_post_meta( $pid, '_elementor_data', true ); $tree = json_decode( $raw, true ); $hits = array();
