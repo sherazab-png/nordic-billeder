@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 function nb_settings() {
 	$d = array(
-		'price_ore'    => 89900,
+		'price_ore'    => 99900,
 		'currency'     => 'dkk',
 		'product'      => 'Basis helkrops-DEXA',
 		'hold_min'     => 30,      // Stripe kræver mindst 30 minutter for en Checkout-session.
