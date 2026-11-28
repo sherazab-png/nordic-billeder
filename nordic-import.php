@@ -321,6 +321,83 @@ function nordic_imp_run( $op, &$st ) {
 		$o['kit'] = array( 'id' => $kit, 'custom_css_len' => is_array( $ks ) ? strlen( (string) ( $ks['custom_css'] ?? '' ) ) : 0 );
 		return array( 'summary' => $o );
 	}
+	if ( 'depro' === $fn ) {
+		// Gør sider uafhængige af Elementor Pro: galleri -> billedgitter, indlejret karrusel -> gitter, Pro-CSS og sticky -> option nordic_free_css.
+		global $wpdb; $res = array(); $all = (array) get_option( 'nordic_free_css', array() );
+		$ids = 'all' === ( $op['posts'] ?? 'all' ) ? $wpdb->get_col( "SELECT p.ID FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish'" ) : (array) $op['posts'];
+		$nid = function () { return substr( md5( wp_generate_password( 12, false ) . microtime() ), 0, 7 ); };
+		foreach ( $ids as $pid ) {
+			$pid = (int) $pid; $raw = (string) get_post_meta( $pid, '_elementor_data', true ); $tree = json_decode( $raw, true );
+			if ( ! is_array( $tree ) ) { continue; }
+			$css = ''; $n = array( 'gal' => 0, 'car' => 0, 'css' => 0, 'sticky' => 0 );
+			$walk = function ( &$els ) use ( &$walk, &$css, &$n, $pid, $nid ) {
+				foreach ( $els as &$e ) {
+					$st = is_array( $e['settings'] ?? null ) ? $e['settings'] : array();
+					$sel = '.elementor-' . $pid . ' .elementor-element.elementor-element-' . $e['id'];
+					if ( ! empty( $st['custom_css'] ) && is_string( $st['custom_css'] ) ) { $css .= str_replace( 'selector', $sel, $st['custom_css'] ) . "\n"; $n['css']++; }
+					if ( ! empty( $st['sticky'] ) && in_array( $st['sticky'], array( 'top', 'bottom' ), true ) ) {
+						$off = (int) ( $st['sticky_offset'] ?? 0 ); $on = (array) ( $st['sticky_on'] ?? array( 'desktop', 'tablet' ) );
+						$css .= '@media(min-width:' . ( in_array( 'tablet', $on, true ) ? '768' : '1025' ) . 'px){' . $sel . '{position:sticky;' . $st['sticky'] . ':' . $off . 'px;align-self:flex-start;z-index:2}}' . "\n"; $n['sticky']++;
+					}
+					$w = $e['widgetType'] ?? '';
+					if ( 'gallery' === $w ) {
+						$c = (int) ( $st['columns'] ?? 4 ); $ct = (int) ( $st['columns_tablet'] ?? 2 ); $cm = (int) ( $st['columns_mobile'] ?? 1 ); $ar = str_replace( ':', '-', (string) ( $st['aspect_ratio'] ?? '3:2' ) );
+						$kids = array();
+						foreach ( (array) ( $st['gallery'] ?? array() ) as $im ) {
+							$is = array( 'image' => array( 'id' => (int) ( $im['id'] ?? 0 ), 'url' => (string) ( $im['url'] ?? '' ), 'alt' => '', 'source' => 'library' ), 'image_size' => (string) ( $st['thumbnail_image_size'] ?? 'full' ), 'link_to' => 'file', 'open_lightbox' => 'yes' );
+							if ( ! empty( $st['image_border_radius'] ) ) { $is['image_border_radius'] = $st['image_border_radius']; }
+							$kids[] = array( 'id' => $nid(), 'elType' => 'widget', 'widgetType' => 'image', 'settings' => $is, 'elements' => array(), 'isInner' => false );
+						}
+						$cs = array( 'content_width' => 'full', 'css_classes' => 'nd-gal nd-c' . $c . ' nd-ct' . $ct . ' nd-cm' . $cm . ' nd-ar-' . $ar );
+						foreach ( array( '_margin' => 'margin', '_margin_tablet' => 'margin_tablet', '_margin_mobile' => 'margin_mobile' ) as $a => $b ) { if ( ! empty( $st[ $a ] ) ) { $cs[ $b ] = $st[ $a ]; } }
+						$e = array( 'id' => $e['id'], 'elType' => 'container', 'settings' => $cs, 'elements' => $kids, 'isInner' => true );
+						$n['gal']++; continue;
+					}
+					if ( 'nested-carousel' === $w ) {
+						$bg = (string) ( $st['content_background_color'] ?? '' ); $kids = (array) ( $e['elements'] ?? array() );
+						foreach ( $kids as &$k ) { if ( $bg && empty( $k['settings']['background_background'] ) ) { $k['settings'] = (array) ( $k['settings'] ?? array() ); $k['settings']['background_background'] = 'classic'; $k['settings']['background_color'] = $bg; } } unset( $k );
+						$cs = array( 'content_width' => 'full', 'css_classes' => 'nd-tgrid' );
+						foreach ( array( '_margin' => 'margin', '_padding' => 'padding' ) as $a => $b ) { if ( ! empty( $st[ $a ] ) ) { $cs[ $b ] = $st[ $a ]; } }
+						$e = array( 'id' => $e['id'], 'elType' => 'container', 'settings' => $cs, 'elements' => $kids, 'isInner' => true );
+						$n['car']++; continue;
+					}
+					if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); }
+				}
+				unset( $e );
+			};
+			$walk( $tree );
+			$css = str_ireplace( '</style', '', $css );
+			if ( $css ) { $all[ $pid ] = $css; } else { unset( $all[ $pid ] ); }
+			if ( $n['gal'] || $n['car'] ) {
+				if ( empty( $op['dry'] ) ) { update_post_meta( $pid, '_nordic_bk_' . $op['id'], wp_slash( $raw ) ); update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) ); foreach ( array( '_elementor_css', '_elementor_element_cache', '_elementor_page_assets' ) as $mk ) { delete_post_meta( $pid, $mk ); } }
+			}
+			if ( array_sum( $n ) ) { $res[ $pid ] = $n; }
+		}
+		if ( empty( $op['dry'] ) ) { update_option( 'nordic_free_css', $all, false ); }
+		return array( 'summary' => $res );
+	}
+	if ( 'depro_hf' === $fn ) {
+		// Kopiér Pro-header/-footer til gratis Elementor-skabeloner. Pro-menu -> [nordic_menu].
+		$out = array(); $map = array( 'h' => (int) $op['h'], 'f' => (int) $op['f'] ); $opt = (array) get_option( 'nordic_free_hf', array() );
+		foreach ( $map as $k => $src ) {
+			$tree = json_decode( (string) get_post_meta( $src, '_elementor_data', true ), true ); if ( ! is_array( $tree ) ) { return array( 'error' => 'ingen data i ' . $src ); }
+			$walk = function ( &$els ) use ( &$walk ) { foreach ( $els as &$e ) { if ( 'nav-menu' === ( $e['widgetType'] ?? '' ) ) { $st = (array) $e['settings']; $keep = array(); foreach ( $st as $a => $b ) { if ( 0 === strpos( $a, '_' ) && '__globals__' !== $a ) { $keep[ $a ] = $b; } } $keep['shortcode'] = '[nordic_menu menu="' . esc_attr( $st['menu'] ?? 'main-menu' ) . '"]'; $e = array( 'id' => $e['id'], 'elType' => 'widget', 'widgetType' => 'shortcode', 'settings' => $keep, 'elements' => array() ); continue; } if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); } } unset( $e ); };
+			$walk( $tree );
+			if ( ! empty( $op['dry'] ) ) { $out[ $k ] = 'ok'; continue; }
+			$key = 'nd_free_' . $k;
+			$ex = get_posts( array( 'post_type' => 'elementor_library', 'post_status' => 'any', 'meta_key' => '_nordic_key', 'meta_value' => $key, 'numberposts' => 1, 'fields' => 'ids' ) );
+			$pid = $ex ? (int) $ex[0] : wp_insert_post( array( 'post_type' => 'elementor_library', 'post_title' => 'h' === $k ? 'Header (uden Pro)' : 'Footer (uden Pro)', 'post_status' => 'publish' ) );
+			update_post_meta( $pid, '_nordic_key', $key ); update_post_meta( $pid, '_elementor_template_type', 'section' ); update_post_meta( $pid, '_elementor_edit_mode', 'builder' );
+			wp_set_object_terms( $pid, 'section', 'elementor_library_type' );
+			$ps = get_post_meta( $src, '_elementor_page_settings', true ); if ( $ps ) { update_post_meta( $pid, '_elementor_page_settings', $ps ); }
+			update_post_meta( $pid, '_elementor_data', wp_slash( wp_json_encode( $tree ) ) ); update_post_meta( $pid, '_elementor_version', get_post_meta( $src, '_elementor_version', true ) );
+			foreach ( array( '_elementor_css', '_elementor_element_cache', '_elementor_page_assets' ) as $mk ) { delete_post_meta( $pid, $mk ); }
+			$opt[ $k ] = $pid; $out[ $k ] = $pid;
+		}
+		if ( empty( $op['dry'] ) ) { update_option( 'nordic_free_hf', $opt, false ); }
+		return array( 'summary' => $out );
+	}
+	if ( 'elcache' === $fn ) { if ( class_exists( '\\Elementor\\Plugin' ) ) { \Elementor\Plugin::$instance->files_manager->clear_cache(); } do_action( 'litespeed_purge_all' ); return array( 'summary' => 'cache ryddet' ); }
 	if ( 'rawel' === $fn ) {
 		// Kun læsning: rå Elementor-data og udvalgte metadata for indlæg + tema og header/footer-plugins.
 		$o = array( 'theme' => get_stylesheet(), 'template' => get_template(), 'plugins' => get_option( 'active_plugins' ), 'hfe' => array( 'compat' => get_option( 'hfe_compatibility_option' ) ) );
