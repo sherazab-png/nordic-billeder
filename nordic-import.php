@@ -306,6 +306,21 @@ function nordic_imp_golive( $fn, $op ) {
 function nordic_imp_run( $op, &$st ) {
 	$fn = $op['fn'] ?? 'ability';
 	if ( ! empty( $op['host'] ) && false === strpos( (string) wp_parse_url( home_url(), PHP_URL_HOST ), $op['host'] ) ) { return array( 'summary' => 'sprunget over (andet site)' ); }
+	if ( 'proscan' === $fn ) {
+		// Kun læsning: Pro-afhængige indstillinger i alle udgivne Elementor-indlæg, sidernes indstillinger og kittet.
+		global $wpdb; $o = array(); $rx = '/^(custom_css|sticky|sticky_offset|sticky_on|sticky_parent|motion_fx_.+|_attributes|e_display_conditions|_element_custom_breakpoints)$/';
+		$rows = $wpdb->get_results( "SELECT p.ID, p.post_type, p.post_title FROM $wpdb->posts p JOIN $wpdb->postmeta m ON m.post_id=p.ID AND m.meta_key='_elementor_data' WHERE p.post_status='publish'" );
+		foreach ( $rows as $r ) {
+			$t = json_decode( (string) get_post_meta( $r->ID, '_elementor_data', true ), true );
+			$walk = function ( $els ) use ( &$walk, &$o, $r, $rx ) { foreach ( (array) $els as $e ) { foreach ( (array) ( $e['settings'] ?? array() ) as $k => $v ) { if ( preg_match( $rx, (string) $k ) && '' !== $v && array() !== $v && null !== $v && 'no' !== $v ) { $o['el'][] = $r->ID . ' ' . $e['id'] . ' ' . ( $e['widgetType'] ?? $e['elType'] ) . ' ' . $k . '=' . mb_substr( is_string( $v ) ? $v : wp_json_encode( $v ), 0, 40 ); } } if ( ! empty( $e['elements'] ) ) { $walk( $e['elements'] ); } } };
+			$walk( $t );
+			$ps = get_post_meta( $r->ID, '_elementor_page_settings', true );
+			if ( is_array( $ps ) && ! empty( $ps['custom_css'] ) ) { $o['page'][] = $r->ID . ' ' . $r->post_title . ' ' . strlen( $ps['custom_css'] ); }
+		}
+		$kit = (int) get_option( 'elementor_active_kit' ); $ks = get_post_meta( $kit, '_elementor_page_settings', true );
+		$o['kit'] = array( 'id' => $kit, 'custom_css_len' => is_array( $ks ) ? strlen( (string) ( $ks['custom_css'] ?? '' ) ) : 0 );
+		return array( 'summary' => $o );
+	}
 	if ( 'rawel' === $fn ) {
 		// Kun læsning: rå Elementor-data og udvalgte metadata for indlæg + tema og header/footer-plugins.
 		$o = array( 'theme' => get_stylesheet(), 'template' => get_template(), 'plugins' => get_option( 'active_plugins' ), 'hfe' => array( 'compat' => get_option( 'hfe_compatibility_option' ) ) );
